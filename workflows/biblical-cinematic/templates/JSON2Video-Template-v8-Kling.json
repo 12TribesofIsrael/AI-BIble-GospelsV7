@@ -75,7 +75,9 @@
           "id": "scene1_bg",
           "type": "video",
           "src": "{{scene1_videoUrl}}",
-          "resize": "cover"
+          "resize": "cover",
+          "loop": -1,
+          "duration": -2
         },
         {
           "id": "scene1_voice",
@@ -96,7 +98,9 @@
           "id": "scene2_bg",
           "type": "video",
           "src": "{{scene2_videoUrl}}",
-          "resize": "cover"
+          "resize": "cover",
+          "loop": -1,
+          "duration": -2
         },
         {
           "id": "scene2_voice",
@@ -117,7 +121,9 @@
           "id": "scene3_bg",
           "type": "video",
           "src": "{{scene3_videoUrl}}",
-          "resize": "cover"
+          "resize": "cover",
+          "loop": -1,
+          "duration": -2
         },
         {
           "id": "scene3_voice",
@@ -138,7 +144,9 @@
           "id": "scene4_bg",
           "type": "video",
           "src": "{{scene4_videoUrl}}",
-          "resize": "cover"
+          "resize": "cover",
+          "loop": -1,
+          "duration": -2
         },
         {
           "id": "scene4_voice",
@@ -159,7 +167,9 @@
           "id": "scene5_bg",
           "type": "video",
           "src": "{{scene5_videoUrl}}",
-          "resize": "cover"
+          "resize": "cover",
+          "loop": -1,
+          "duration": -2
         },
         {
           "id": "scene5_voice",
@@ -180,7 +190,9 @@
           "id": "scene6_bg",
           "type": "video",
           "src": "{{scene6_videoUrl}}",
-          "resize": "cover"
+          "resize": "cover",
+          "loop": -1,
+          "duration": -2
         },
         {
           "id": "scene6_voice",
@@ -201,7 +213,9 @@
           "id": "scene7_bg",
           "type": "video",
           "src": "{{scene7_videoUrl}}",
-          "resize": "cover"
+          "resize": "cover",
+          "loop": -1,
+          "duration": -2
         },
         {
           "id": "scene7_voice",
@@ -222,7 +236,9 @@
           "id": "scene8_bg",
           "type": "video",
           "src": "{{scene8_videoUrl}}",
-          "resize": "cover"
+          "resize": "cover",
+          "loop": -1,
+          "duration": -2
         },
         {
           "id": "scene8_voice",
@@ -243,7 +259,9 @@
           "id": "scene9_bg",
           "type": "video",
           "src": "{{scene9_videoUrl}}",
-          "resize": "cover"
+          "resize": "cover",
+          "loop": -1,
+          "duration": -2
         },
         {
           "id": "scene9_voice",
@@ -264,7 +282,9 @@
           "id": "scene10_bg",
           "type": "video",
           "src": "{{scene10_videoUrl}}",
-          "resize": "cover"
+          "resize": "cover",
+          "loop": -1,
+          "duration": -2
         },
         {
           "id": "scene10_voice",
@@ -285,7 +305,9 @@
           "id": "scene11_bg",
           "type": "video",
           "src": "{{scene11_videoUrl}}",
-          "resize": "cover"
+          "resize": "cover",
+          "loop": -1,
+          "duration": -2
         },
         {
           "id": "scene11_voice",
@@ -306,7 +328,9 @@
           "id": "scene12_bg",
           "type": "video",
           "src": "{{scene12_videoUrl}}",
-          "resize": "cover"
+          "resize": "cover",
+          "loop": -1,
+          "duration": -2
         },
         {
           "id": "scene12_voice",
@@ -327,7 +351,9 @@
           "id": "scene13_bg",
           "type": "video",
           "src": "{{scene13_videoUrl}}",
-          "resize": "cover"
+          "resize": "cover",
+          "loop": -1,
+          "duration": -2
         },
         {
           "id": "scene13_voice",
@@ -348,7 +374,9 @@
           "id": "scene14_bg",
           "type": "video",
           "src": "{{scene14_videoUrl}}",
-          "resize": "cover"
+          "resize": "cover",
+          "loop": -1,
+          "duration": -2
         },
         {
           "id": "scene14_voice",
@@ -369,7 +397,9 @@
           "id": "scene15_bg",
           "type": "video",
           "src": "{{scene15_videoUrl}}",
-          "resize": "cover"
+          "resize": "cover",
+          "loop": -1,
+          "duration": -2
         },
         {
           "id": "scene15_voice",
@@ -390,7 +420,9 @@
           "id": "scene16_bg",
           "type": "video",
           "src": "{{scene16_videoUrl}}",
-          "resize": "cover"
+          "resize": "cover",
+          "loop": -1,
+          "duration": -2
         },
         {
           "id": "scene16_voice",
@@ -411,7 +443,9 @@
           "id": "scene17_bg",
           "type": "video",
           "src": "{{scene17_videoUrl}}",
-          "resize": "cover"
+          "resize": "cover",
+          "loop": -1,
+          "duration": -2
         },
         {
           "id": "scene17_voice",
@@ -432,7 +466,9 @@
           "id": "scene18_bg",
           "type": "video",
           "src": "{{scene18_videoUrl}}",
-          "resize": "cover"
+          "resize": "cover",
+          "loop": -1,
+          "duration": -2
         },
         {
           "id": "scene18_voice",
@@ -453,7 +489,9 @@
           "id": "scene19_bg",
           "type": "video",
           "src": "{{scene19_videoUrl}}",
-          "resize": "cover"
+          "resize": "cover",
+          "loop": -1,
+          "duration": -2
         },
         {
           "id": "scene19_voice",
@@ -474,7 +512,9 @@
           "id": "scene20_bg",
           "type": "video",
           "src": "{{scene20_videoUrl}}",
-          "resize": "cover"
+          "resize": "cover",
+          "loop": -1,
+          "duration": -2
         },
         {
           "id": "scene20_voice",
