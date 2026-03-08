@@ -232,7 +232,7 @@
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"template\": \"yia2WweBcQAohYpBbByf\",\n  \"resolution\": \"hd\",\n  \"quality\": \"high\",\n  \"variables\": {{ JSON.stringify($('Build Template Vars').item.json.templateVariables) }},\n  \"settings\": {\n    \"sceneDuration\": \"auto\",\n    \"voiceTiming\": \"natural\"\n  }\n}",
+        "jsonBody": "={\n  \"template\": \"cHtpubYegDm2patG2tym\",\n  \"resolution\": \"hd\",\n  \"quality\": \"high\",\n  \"variables\": {{ JSON.stringify($('Build Template Vars').item.json.templateVariables) }},\n  \"settings\": {\n    \"sceneDuration\": \"auto\",\n    \"voiceTiming\": \"natural\"\n  }\n}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
