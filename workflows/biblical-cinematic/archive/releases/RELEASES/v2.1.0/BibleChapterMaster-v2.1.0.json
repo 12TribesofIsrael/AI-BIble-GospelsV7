@@ -1,0 +1,467 @@
+{
+  "name": "Bible Chapter Video Generator",
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "// Get the input text from previous node\nconst inputText = $('Bible Chapter Text Input').item.json.inputText;\n\n// ENHANCED Build the request payload with Make.com-style prompting\nconst requestPayload = {\n  model: \"llama-3.1-sonar-large-128k-online\",\n  messages: [{\n    role: \"user\", \n    content: `You are a Biblical storytelling and video production expert. Create a script for a long-form video that narrates the Bible chapter content provided: \"${inputText}\" exactly as it is—word for word and line for line. Do not summarize or paraphrase any part of the biblical text. Instead, break the Bible chapter into scenes that facilitate the creation of engaging biblical video content. For each non-empty verse or sentence of the biblical text, create a separate scene where both the overlaid text and the voice-over text match the biblical text exactly.\n\nIf a verse is too short to meet the minimum voice-over text length of 20 words, combine it with the following verse(s) without altering the original biblical wording.\n\nYour output must be in JSON format following this exact schema:\n\n{\n  \"scenes\": [\n    {\n      \"overlaidText\": \"Direct biblical phrase from the text (3-8 words)\",\n      \"voiceOverText\": \"Exact biblical text word-for-word (20+ words minimum)\",\n      \"imagePrompt\": \"Detailed visual description for biblical scene with appropriate religious imagery\"\n    }\n  ]\n}\n\nIMPORTANT GUIDELINES:\n- Use the biblical text exactly as provided—word for word and line for line\n- Create a separate scene for each verse or sentence in the biblical text\n- VoiceOverText must be the exact biblical wording, no paraphrasing\n- OverlaidText should be direct quotes from the biblical text (3-8 words)\n- ImagePrompts should be reverent, appropriate biblical visuals (avoid depicting God directly)\n- The number of scenes should match the length and structure of the input text\n- Longer biblical passages should result in more scenes and longer videos\n- Focus on maintaining the exact biblical wording and spiritual significance\n\nReturn ONLY the JSON, no other text.`\n  }],\n  max_tokens: 5000,\n  temperature: 0.7\n};\n\n// Return the payload\nreturn [{\n  json: requestPayload\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1600,
+        -20
+      ],
+      "id": "2672c1f3-80da-478a-968b-ac57c8369944",
+      "name": "Biblical Content Prompt Builder"
+    },
+    {
+      "parameters": {
+        "amount": 15
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -280,
+        280
+      ],
+      "id": "58a36eb4-527e-4efe-900f-ae55a12875fc",
+      "name": "Wait 15 Seconds",
+      "webhookId": "f17237d9-4b2d-4272-af94-4ff174133de3"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "error-message-final",
+              "name": "errorMessage",
+              "value": "={{ $json.movie.message }}",
+              "type": "string"
+            },
+            {
+              "id": "error-status-final",
+              "name": "errorStatus",
+              "value": "{{ $json.movie.status }}",
+              "type": "string"
+            },
+            {
+              "id": "error-time-final",
+              "name": "errorTime",
+              "value": "={{ new Date().toISOString() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -280,
+        80
+      ],
+      "id": "dd434f12-668c-45cf-9037-b8dc35f1057c",
+      "name": "Error Output"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "video-url-final",
+              "name": "finalVideoUrl",
+              "value": "={{ $json.movie.url }}",
+              "type": "string"
+            },
+            {
+              "id": "video-duration-final",
+              "name": "videoDuration",
+              "value": "={{ $json.movie.duration }}",
+              "type": "number"
+            },
+            {
+              "id": "video-size-final",
+              "name": "videoSize",
+              "value": "={{ $json.movie.size }}",
+              "type": "number"
+            },
+            {
+              "id": "completion-time-final",
+              "name": "completedAt",
+              "value": "={{ $json.movie.ended_at }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -280,
+        -120
+      ],
+      "id": "1754ad5a-8be3-4698-b3c0-02a5d6e6533c",
+      "name": "Final Video Output"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "id": "video-complete",
+                    "leftValue": "={{ $json.movie.status }}",
+                    "rightValue": "done",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Video Complete"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.movie.status }}",
+                    "rightValue": "error",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "video-error"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Video Error"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "id": "video-processing",
+                    "leftValue": "={{ $json.movie.status }}",
+                    "rightValue": "running",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Still Processing"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        -500,
+        -20
+      ],
+      "id": "a7430689-8dfe-4e7e-9754-befb68bf2636",
+      "name": "Video Status Router"
+    },
+    {
+      "parameters": {
+        "url": "https://api.json2video.com/v2/movies",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "project",
+              "value": "={{ $('Generate 16:9 Spiritual Video').item.json.project }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -720,
+        -20
+      ],
+      "id": "0ef8c8a8-b353-43ac-8197-0a5107956f39",
+      "name": "Check Video Status",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "pKpJaJTXBg3wLGgY",
+          "name": "Json2Video"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.json2video.com/v2/movies",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"template\": \"AjVMAMphIadE4L3apPGf\",\n  \"resolution\": \"hd\",\n  \"quality\": \"high\",\n  \"variables\": {{ JSON.stringify($('Enhanced Format for 16:9 Template').item.json.templateVariables) }},\n  \"settings\": {\n    \"sceneDuration\": \"auto\",\n    \"voiceTiming\": \"natural\"\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -940,
+        -20
+      ],
+      "id": "c77e3c16-5db5-431d-ba00-2888585358d3",
+      "name": "Generate 16:9 Spiritual Video",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "pKpJaJTXBg3wLGgY",
+          "name": "Json2Video"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse Perplexity response and format for DYNAMIC BIBLICAL TEMPLATE\nconst response = items[0].json.choices[0].message.content;\n\n// Extract JSON from response\nlet sceneData;\ntry {\n  const jsonMatch = response.match(/\\{[\\s\\S]*\\}/);\n  sceneData = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(response);\n} catch (error) {\n  throw new Error('Failed to parse Perplexity response: ' + error.message);\n}\n\n// Get scenes array\nlet scenes = sceneData.scenes || [];\n\nif (scenes.length === 0) {\n  throw new Error('No scenes found in response. Raw response: ' + response);\n}\n\n// Function to clean text for JSON safety\nfunction cleanText(text) {\n  if (!text) return '';\n  return text\n    .replace(/\"/g, \"'\")\n    .replace(/\\n/g, \" \")\n    .replace(/\\r/g, \" \")\n    .replace(/\\t/g, \" \")\n    .replace(/[\\u0000-\\u001F\\u007F-\\u009F]/g, \"\")\n    .trim();\n}\n\n// Format scenes for TEMPLATE with DYNAMIC VARIABLES\nconst templateVariables = {};\n\n// Add all scenes as template variables\nscenes.forEach((scene, index) => {\n  const sceneNum = index + 1;\n  templateVariables[`scene${sceneNum}_overlaidText`] = cleanText(scene.overlaidText || scene.title || `Scene ${sceneNum}`);\n  templateVariables[`scene${sceneNum}_voiceOverText`] = cleanText(scene.voiceOverText || scene.voiceoverText || scene.description || '');\n  templateVariables[`scene${sceneNum}_imagePrompt`] = cleanText(scene.imagePrompt || scene.imageDescription || `Biblical scene ${sceneNum}`);\n});\n\n// Add scene count for template logic\ntemplateVariables.totalScenes = scenes.length;\ntemplateVariables.sceneDuration = \"auto\"; // Let template use voice duration\n\n// Return the template variables\nconst result = {\n  scenes: scenes, // Original scenes for debugging\n  templateVariables: templateVariables, // Variables for template\n  totalScenes: scenes.length,\n  debugInfo: {\n    originalResponseLength: response.length,\n    parsedScenesCount: scenes.length,\n    templateVariablesCount: Object.keys(templateVariables).length,\n    timestamp: new Date().toISOString(),\n    version: 'Template Variables v4.0 - Using Template with Dynamic Variables'\n  }\n};\n\nreturn result;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1160,
+        -20
+      ],
+      "id": "2058464b-36a3-4404-8394-d74571b09c36",
+      "name": "Enhanced Format for 16:9 Template"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.perplexity.ai/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify($json) }}",
+        "options": {
+          "lowercaseHeaders": false
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1380,
+        -20
+      ],
+      "id": "290cf53b-3143-4250-bf7c-1d8ebd465c12",
+      "name": "Perplexity AI Scene Generator",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "noOOIabOZieEx3ug",
+          "name": "Perplexity-API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "input-content-final",
+              "name": "inputText",
+              "value": "In the beginning God created the heavens and the earth. Now the earth was formless and empty, darkness was over the surface of the deep, and the Spirit of God was hovering over the waters. And God said, Let there be light, and there was light.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1820,
+        -20
+      ],
+      "id": "8a073dee-243a-4879-8b5d-7092c78fd4a7",
+      "name": "Bible Chapter Text Input"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -2040,
+        -20
+      ],
+      "id": "c858c4eb-f84d-4707-b863-01fab7110383",
+      "name": "Start Workflow"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Enhanced Build Perplexity Request": {
+      "main": [
+        [
+          {
+            "node": "Perplexity AI Scene Generator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 15 Seconds": {
+      "main": [
+        [
+          {
+            "node": "Check Video Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Video Status Router": {
+      "main": [
+        [
+          {
+            "node": "Final Video Output",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error Output",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait 15 Seconds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Video Status": {
+      "main": [
+        [
+          {
+            "node": "Video Status Router",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate 16:9 Spiritual Video": {
+      "main": [
+        [
+          {
+            "node": "Check Video Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enhanced Format for 16:9 Template": {
+      "main": [
+        [
+          {
+            "node": "Generate 16:9 Spiritual Video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Perplexity AI Scene Generator": {
+      "main": [
+        [
+          {
+            "node": "Enhanced Format for 16:9 Template",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Bible Chapter Text Input": {
+      "main": [
+        [
+          {
+            "node": "Biblical Content Prompt Builder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Biblical Content Prompt Builder": {
+      "main": [
+        [
+          {
+            "node": "Perplexity AI Scene Generator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start Workflow": {
+      "main": [
+        [
+          {
+            "node": "Bible Chapter Text Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "38b9d590-df55-42dd-9430-eefda57553ca",
+  "meta": {
+    "instanceId": "c71ecfbc6cd667fd069cd84f01f128834a34f2b3a956da891f33f10bd104d2b8"
+  },
+  "id": "IUeqZi2478J44g85",
+  "tags": []
+}

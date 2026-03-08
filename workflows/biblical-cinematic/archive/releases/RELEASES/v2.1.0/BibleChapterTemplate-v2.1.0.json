@@ -1,0 +1,293 @@
+{
+    "id": "main4_dynamic_generator",
+    "comment": "DYNAMIC Biblical Video Template - Generates content with auto timing",
+    "resolution": "full-hd",
+    "variables": {
+      "userInputText": "Enter Bible chapter content here and it will automatically generate dynamic scenes",
+      "totalScenes": "{{totalScenes}}",
+      "sceneDuration": "auto",
+      "scene1_overlaidText": "{{scene1_overlaidText}}",
+      "scene1_voiceOverText": "{{scene1_voiceOverText}}",
+      "scene1_imagePrompt": "{{scene1_imagePrompt}}",
+      "scene2_overlaidText": "{{scene2_overlaidText}}",
+      "scene2_voiceOverText": "{{scene2_voiceOverText}}",
+      "scene2_imagePrompt": "{{scene2_imagePrompt}}",
+      "scene3_overlaidText": "{{scene3_overlaidText}}",
+      "scene3_voiceOverText": "{{scene3_voiceOverText}}",
+      "scene3_imagePrompt": "{{scene3_imagePrompt}}",
+      "scene4_overlaidText": "{{scene4_overlaidText}}",
+      "scene4_voiceOverText": "{{scene4_voiceOverText}}",
+      "scene4_imagePrompt": "{{scene4_imagePrompt}}",
+      "scene5_overlaidText": "{{scene5_overlaidText}}",
+      "scene5_voiceOverText": "{{scene5_voiceOverText}}",
+      "scene5_imagePrompt": "{{scene5_imagePrompt}}",
+      "scene6_overlaidText": "{{scene6_overlaidText}}",
+      "scene6_voiceOverText": "{{scene6_voiceOverText}}",
+      "scene6_imagePrompt": "{{scene6_imagePrompt}}",
+      "scene7_overlaidText": "{{scene7_overlaidText}}",
+      "scene7_voiceOverText": "{{scene7_voiceOverText}}",
+      "scene7_imagePrompt": "{{scene7_imagePrompt}}",
+      "scene8_overlaidText": "{{scene8_overlaidText}}",
+      "scene8_voiceOverText": "{{scene8_voiceOverText}}",
+      "scene8_imagePrompt": "{{scene8_imagePrompt}}",
+      "scene9_overlaidText": "{{scene9_overlaidText}}",
+      "scene9_voiceOverText": "{{scene9_voiceOverText}}",
+      "scene9_imagePrompt": "{{scene9_imagePrompt}}",
+      "scene10_overlaidText": "{{scene10_overlaidText}}",
+      "scene10_voiceOverText": "{{scene10_voiceOverText}}",
+      "scene10_imagePrompt": "{{scene10_imagePrompt}}"
+    },
+    "scenes": [
+      {
+        "id": "scene1_biblical",
+        "comment": "Biblical Scene 1 - {{scene1_overlaidText}}",
+        "duration": "auto",
+        "elements": [
+          {
+            "id": "scene1_bg",
+            "type": "image",
+            "prompt": "{{scene1_imagePrompt}}, biblical, spiritual, reverent, cinematic lighting, professional photography, ultra-detailed, photorealistic, 8K quality, award-winning shot",
+            "model": "flux-pro",
+            "resize": "cover",
+            "duration": "auto"
+          },
+          {
+            "id": "scene1_voice",
+            "type": "voice",
+            "text": "{{scene1_voiceOverText}}",
+            "voice": "en-US-AriaNeural",
+            "model": "azure",
+            "speed": 0.9
+          }
+        ]
+      },
+      {
+        "id": "scene2_biblical",
+        "comment": "Biblical Scene 2 - {{scene2_overlaidText}}",
+        "duration": "auto",
+        "elements": [
+          {
+            "id": "scene2_bg",
+            "type": "image",
+            "prompt": "{{scene2_imagePrompt}}, biblical, spiritual, reverent, cinematic lighting, professional photography, ultra-detailed, photorealistic, 8K quality, award-winning shot",
+            "model": "flux-pro",
+            "resize": "cover",
+            "duration": "auto"
+          },
+          {
+            "id": "scene2_voice",
+            "type": "voice",
+            "text": "{{scene2_voiceOverText}}",
+            "voice": "en-US-AriaNeural",
+            "model": "azure",
+            "speed": 0.9
+          }
+        ]
+      },
+      {
+        "id": "scene3_biblical",
+        "comment": "Biblical Scene 3 - {{scene3_overlaidText}}",
+        "duration": "auto",
+        "elements": [
+          {
+            "id": "scene3_bg",
+            "type": "image",
+            "prompt": "{{scene3_imagePrompt}}, biblical, spiritual, reverent, cinematic lighting, professional photography, ultra-detailed, photorealistic, 8K quality, award-winning shot",
+            "model": "flux-pro",
+            "resize": "cover",
+            "duration": "auto"
+          },
+          {
+            "id": "scene3_voice",
+            "type": "voice",
+            "text": "{{scene3_voiceOverText}}",
+            "voice": "en-US-AriaNeural",
+            "model": "azure",
+            "speed": 0.9
+          }
+        ]
+      },
+      {
+        "id": "scene4_biblical",
+        "comment": "Biblical Scene 4 - {{scene4_overlaidText}}",
+        "duration": "auto",
+        "elements": [
+          {
+            "id": "scene4_bg",
+            "type": "image",
+            "prompt": "{{scene4_imagePrompt}}, biblical, spiritual, reverent, cinematic lighting, professional photography, ultra-detailed, photorealistic, 8K quality, award-winning shot",
+            "model": "flux-pro",
+            "resize": "cover",
+            "duration": "auto"
+          },
+          {
+            "id": "scene4_voice",
+            "type": "voice",
+            "text": "{{scene4_voiceOverText}}",
+            "voice": "en-US-AriaNeural",
+            "model": "azure",
+            "speed": 0.9
+          }
+        ]
+      },
+      {
+        "id": "scene5_biblical",
+        "comment": "Biblical Scene 5 - {{scene5_overlaidText}}",
+        "duration": "auto",
+        "elements": [
+          {
+            "id": "scene5_bg",
+            "type": "image",
+            "prompt": "{{scene5_imagePrompt}}, biblical, spiritual, reverent, cinematic lighting, professional photography, ultra-detailed, photorealistic, 8K quality, award-winning shot",
+            "model": "flux-pro",
+            "resize": "cover",
+            "duration": "auto"
+          },
+          {
+            "id": "scene5_voice",
+            "type": "voice",
+            "text": "{{scene5_voiceOverText}}",
+            "voice": "en-US-AriaNeural",
+            "model": "azure",
+            "speed": 0.9
+          }
+        ]
+      },
+      {
+        "id": "scene6_biblical",
+        "comment": "Biblical Scene 6 - {{scene6_overlaidText}}",
+        "duration": "auto",
+        "elements": [
+          {
+            "id": "scene6_bg",
+            "type": "image",
+            "prompt": "{{scene6_imagePrompt}}, biblical, spiritual, reverent, cinematic lighting, professional photography, ultra-detailed, photorealistic, 8K quality, award-winning shot",
+            "model": "flux-pro",
+            "resize": "cover",
+            "duration": "auto"
+          },
+          {
+            "id": "scene6_voice",
+            "type": "voice",
+            "text": "{{scene6_voiceOverText}}",
+            "voice": "en-US-AriaNeural",
+            "model": "azure",
+            "speed": 0.9
+          }
+        ]
+      },
+      {
+        "id": "scene7_biblical",
+        "comment": "Biblical Scene 7 - {{scene7_overlaidText}}",
+        "duration": "auto",
+        "elements": [
+          {
+            "id": "scene7_bg",
+            "type": "image",
+            "prompt": "{{scene7_imagePrompt}}, biblical, spiritual, reverent, cinematic lighting, professional photography, ultra-detailed, photorealistic, 8K quality, award-winning shot",
+            "model": "flux-pro",
+            "resize": "cover",
+            "duration": "auto"
+          },
+          {
+            "id": "scene7_voice",
+            "type": "voice",
+            "text": "{{scene7_voiceOverText}}",
+            "voice": "en-US-AriaNeural",
+            "model": "azure",
+            "speed": 0.9
+          }
+        ]
+      },
+      {
+        "id": "scene8_biblical",
+        "comment": "Biblical Scene 8 - {{scene8_overlaidText}}",
+        "duration": "auto",
+        "elements": [
+          {
+            "id": "scene8_bg",
+            "type": "image",
+            "prompt": "{{scene8_imagePrompt}}, biblical, spiritual, reverent, cinematic lighting, professional photography, ultra-detailed, photorealistic, 8K quality, award-winning shot",
+            "model": "flux-pro",
+            "resize": "cover",
+            "duration": "auto"
+          },
+          {
+            "id": "scene8_voice",
+            "type": "voice",
+            "text": "{{scene8_voiceOverText}}",
+            "voice": "en-US-AriaNeural",
+            "model": "azure",
+            "speed": 0.9
+          }
+        ]
+      },
+      {
+        "id": "scene9_biblical",
+        "comment": "Biblical Scene 9 - {{scene9_overlaidText}}",
+        "duration": "auto",
+        "elements": [
+          {
+            "id": "scene9_bg",
+            "type": "image",
+            "prompt": "{{scene9_imagePrompt}}, biblical, spiritual, reverent, cinematic lighting, professional photography, ultra-detailed, photorealistic, 8K quality, award-winning shot",
+            "model": "flux-pro",
+            "resize": "cover",
+            "duration": "auto"
+          },
+          {
+            "id": "scene9_voice",
+            "type": "voice",
+            "text": "{{scene9_voiceOverText}}",
+            "voice": "en-US-AriaNeural",
+            "model": "azure",
+            "speed": 0.9
+          }
+        ]
+      },
+      {
+        "id": "scene10_biblical",
+        "comment": "Biblical Scene 10 - {{scene10_overlaidText}}",
+        "duration": "auto",
+        "elements": [
+          {
+            "id": "scene10_bg",
+            "type": "image",
+            "prompt": "{{scene10_imagePrompt}}, biblical, spiritual, reverent, cinematic lighting, professional photography, ultra-detailed, photorealistic, 8K quality, award-winning shot",
+            "model": "flux-pro",
+            "resize": "cover",
+            "duration": "auto"
+          },
+          {
+            "id": "scene10_voice",
+            "type": "voice",
+            "text": "{{scene10_voiceOverText}}",
+            "voice": "en-US-AriaNeural",
+            "model": "azure",
+            "speed": 0.9
+          }
+        ]
+      }
+    ],
+    "elements": [
+      {
+        "id": "movie_subtitles",
+        "type": "subtitles",
+        "language": "en",
+        "model": "default",
+        "settings": {
+          "style": "classic",
+          "font-family": "Oswald Bold",
+          "font-size": 80,
+          "position": "bottom-center",
+          "line-color": "#CCCCCC",
+          "word-color": "#FFFF00",
+          "outline-color": "#000000",
+          "outline-width": 8,
+          "shadow-color": "#000000",
+          "shadow-offset": 6,
+          "max-words-per-line": 4
+        }
+      }
+    ]
+  }

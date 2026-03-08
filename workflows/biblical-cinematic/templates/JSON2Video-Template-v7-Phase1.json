@@ -1,0 +1,964 @@
+{
+  "id": "h5yD4ZbxhCPNFQ2WoVUs",
+  "comment": "PRODUCTION TEMPLATE - v7 Phase 1 - Title Card + Dramatic Ken Burns (21 scenes: scene0 title + scenes 1-20)",
+  "resolution": "full-hd",
+  "quality": "high",
+  "variables": {
+    "userInputText": "Enter Bible chapter content here - TEST VERSION",
+    "totalScenes": "{{totalScenes}}",
+    "sceneDuration": "auto",
+    "title_bookChapter": "{{title_bookChapter}}",
+    "title_subtitle": "{{title_subtitle}}",
+    "title_backgroundPrompt": "{{title_backgroundPrompt}}",
+    "scene1_overlaidText": "{{scene1_overlaidText}}",
+    "scene1_voiceOverText": "{{scene1_voiceOverText}}",
+    "scene1_imagePrompt": "{{scene1_imagePrompt}}",
+    "scene1_animation": "{{scene1_animation}}",
+    "scene1_motionType": "{{scene1_motionType}}",
+    "scene1_zoomStart": "{{scene1_zoomStart}}",
+    "scene1_zoomEnd": "{{scene1_zoomEnd}}",
+    "scene1_panStart": "{{scene1_panStart}}",
+    "scene1_panEnd": "{{scene1_panEnd}}",
+    "scene1_animationDuration": "{{scene1_animationDuration}}",
+    "scene1_easing": "{{scene1_easing}}",
+    "scene2_overlaidText": "{{scene2_overlaidText}}",
+    "scene2_voiceOverText": "{{scene2_voiceOverText}}",
+    "scene2_imagePrompt": "{{scene2_imagePrompt}}",
+    "scene2_animation": "{{scene2_animation}}",
+    "scene2_motionType": "{{scene2_motionType}}",
+    "scene2_zoomStart": "{{scene2_zoomStart}}",
+    "scene2_zoomEnd": "{{scene2_zoomEnd}}",
+    "scene2_panStart": "{{scene2_panStart}}",
+    "scene2_panEnd": "{{scene2_panEnd}}",
+    "scene2_animationDuration": "{{scene2_animationDuration}}",
+    "scene2_easing": "{{scene2_easing}}",
+    "scene3_overlaidText": "{{scene3_overlaidText}}",
+    "scene3_voiceOverText": "{{scene3_voiceOverText}}",
+    "scene3_imagePrompt": "{{scene3_imagePrompt}}",
+    "scene3_animation": "{{scene3_animation}}",
+    "scene3_motionType": "{{scene3_motionType}}",
+    "scene3_zoomStart": "{{scene3_zoomStart}}",
+    "scene3_zoomEnd": "{{scene3_zoomEnd}}",
+    "scene3_panStart": "{{scene3_panStart}}",
+    "scene3_panEnd": "{{scene3_panEnd}}",
+    "scene3_animationDuration": "{{scene3_animationDuration}}",
+    "scene3_easing": "{{scene3_easing}}",
+    "scene4_overlaidText": "{{scene4_overlaidText}}",
+    "scene4_voiceOverText": "{{scene4_voiceOverText}}",
+    "scene4_imagePrompt": "{{scene4_imagePrompt}}",
+    "scene4_animation": "{{scene4_animation}}",
+    "scene4_motionType": "{{scene4_motionType}}",
+    "scene4_zoomStart": "{{scene4_zoomStart}}",
+    "scene4_zoomEnd": "{{scene4_zoomEnd}}",
+    "scene4_panStart": "{{scene4_panStart}}",
+    "scene4_panEnd": "{{scene4_panEnd}}",
+    "scene4_animationDuration": "{{scene4_animationDuration}}",
+    "scene4_easing": "{{scene4_easing}}",
+    "scene5_overlaidText": "{{scene5_overlaidText}}",
+    "scene5_voiceOverText": "{{scene5_voiceOverText}}",
+    "scene5_imagePrompt": "{{scene5_imagePrompt}}",
+    "scene5_animation": "{{scene5_animation}}",
+    "scene5_motionType": "{{scene5_motionType}}",
+    "scene5_zoomStart": "{{scene5_zoomStart}}",
+    "scene5_zoomEnd": "{{scene5_zoomEnd}}",
+    "scene5_panStart": "{{scene5_panStart}}",
+    "scene5_panEnd": "{{scene5_panEnd}}",
+    "scene5_animationDuration": "{{scene5_animationDuration}}",
+    "scene5_easing": "{{scene5_easing}}",
+    "scene6_overlaidText": "{{scene6_overlaidText}}",
+    "scene6_voiceOverText": "{{scene6_voiceOverText}}",
+    "scene6_imagePrompt": "{{scene6_imagePrompt}}",
+    "scene6_animation": "{{scene6_animation}}",
+    "scene6_motionType": "{{scene6_motionType}}",
+    "scene6_zoomStart": "{{scene6_zoomStart}}",
+    "scene6_zoomEnd": "{{scene6_zoomEnd}}",
+    "scene6_panStart": "{{scene6_panStart}}",
+    "scene6_panEnd": "{{scene6_panEnd}}",
+    "scene6_animationDuration": "{{scene6_animationDuration}}",
+    "scene6_easing": "{{scene6_easing}}",
+    "scene7_overlaidText": "{{scene7_overlaidText}}",
+    "scene7_voiceOverText": "{{scene7_voiceOverText}}",
+    "scene7_imagePrompt": "{{scene7_imagePrompt}}",
+    "scene7_animation": "{{scene7_animation}}",
+    "scene7_motionType": "{{scene7_motionType}}",
+    "scene7_zoomStart": "{{scene7_zoomStart}}",
+    "scene7_zoomEnd": "{{scene7_zoomEnd}}",
+    "scene7_panStart": "{{scene7_panStart}}",
+    "scene7_panEnd": "{{scene7_panEnd}}",
+    "scene7_animationDuration": "{{scene7_animationDuration}}",
+    "scene7_easing": "{{scene7_easing}}",
+    "scene8_overlaidText": "{{scene8_overlaidText}}",
+    "scene8_voiceOverText": "{{scene8_voiceOverText}}",
+    "scene8_imagePrompt": "{{scene8_imagePrompt}}",
+    "scene8_animation": "{{scene8_animation}}",
+    "scene8_motionType": "{{scene8_motionType}}",
+    "scene8_zoomStart": "{{scene8_zoomStart}}",
+    "scene8_zoomEnd": "{{scene8_zoomEnd}}",
+    "scene8_panStart": "{{scene8_panStart}}",
+    "scene8_panEnd": "{{scene8_panEnd}}",
+    "scene8_animationDuration": "{{scene8_animationDuration}}",
+    "scene8_easing": "{{scene8_easing}}",
+    "scene9_overlaidText": "{{scene9_overlaidText}}",
+    "scene9_voiceOverText": "{{scene9_voiceOverText}}",
+    "scene9_imagePrompt": "{{scene9_imagePrompt}}",
+    "scene9_animation": "{{scene9_animation}}",
+    "scene9_motionType": "{{scene9_motionType}}",
+    "scene9_zoomStart": "{{scene9_zoomStart}}",
+    "scene9_zoomEnd": "{{scene9_zoomEnd}}",
+    "scene9_panStart": "{{scene9_panStart}}",
+    "scene9_panEnd": "{{scene9_panEnd}}",
+    "scene9_animationDuration": "{{scene9_animationDuration}}",
+    "scene9_easing": "{{scene9_easing}}",
+    "scene10_overlaidText": "{{scene10_overlaidText}}",
+    "scene10_voiceOverText": "{{scene10_voiceOverText}}",
+    "scene10_imagePrompt": "{{scene10_imagePrompt}}",
+    "scene10_animation": "{{scene10_animation}}",
+    "scene10_motionType": "{{scene10_motionType}}",
+    "scene10_zoomStart": "{{scene10_zoomStart}}",
+    "scene10_zoomEnd": "{{scene10_zoomEnd}}",
+    "scene10_panStart": "{{scene10_panStart}}",
+    "scene10_panEnd": "{{scene10_panEnd}}",
+    "scene10_animationDuration": "{{scene10_animationDuration}}",
+    "scene10_easing": "{{scene10_easing}}",
+    "scene11_overlaidText": "{{scene11_overlaidText}}",
+    "scene11_voiceOverText": "{{scene11_voiceOverText}}",
+    "scene11_imagePrompt": "{{scene11_imagePrompt}}",
+    "scene11_animation": "{{scene11_animation}}",
+    "scene11_motionType": "{{scene11_motionType}}",
+    "scene11_zoomStart": "{{scene11_zoomStart}}",
+    "scene11_zoomEnd": "{{scene11_zoomEnd}}",
+    "scene11_panStart": "{{scene11_panStart}}",
+    "scene11_panEnd": "{{scene11_panEnd}}",
+    "scene11_animationDuration": "{{scene11_animationDuration}}",
+    "scene11_easing": "{{scene11_easing}}",
+    "scene12_overlaidText": "{{scene12_overlaidText}}",
+    "scene12_voiceOverText": "{{scene12_voiceOverText}}",
+    "scene12_imagePrompt": "{{scene12_imagePrompt}}",
+    "scene12_animation": "{{scene12_animation}}",
+    "scene12_motionType": "{{scene12_motionType}}",
+    "scene12_zoomStart": "{{scene12_zoomStart}}",
+    "scene12_zoomEnd": "{{scene12_zoomEnd}}",
+    "scene12_panStart": "{{scene12_panStart}}",
+    "scene12_panEnd": "{{scene12_panEnd}}",
+    "scene12_animationDuration": "{{scene12_animationDuration}}",
+    "scene12_easing": "{{scene12_easing}}",
+    "scene13_overlaidText": "{{scene13_overlaidText}}",
+    "scene13_voiceOverText": "{{scene13_voiceOverText}}",
+    "scene13_imagePrompt": "{{scene13_imagePrompt}}",
+    "scene13_animation": "{{scene13_animation}}",
+    "scene13_motionType": "{{scene13_motionType}}",
+    "scene13_zoomStart": "{{scene13_zoomStart}}",
+    "scene13_zoomEnd": "{{scene13_zoomEnd}}",
+    "scene13_panStart": "{{scene13_panStart}}",
+    "scene13_panEnd": "{{scene13_panEnd}}",
+    "scene13_animationDuration": "{{scene13_animationDuration}}",
+    "scene13_easing": "{{scene13_easing}}",
+    "scene14_overlaidText": "{{scene14_overlaidText}}",
+    "scene14_voiceOverText": "{{scene14_voiceOverText}}",
+    "scene14_imagePrompt": "{{scene14_imagePrompt}}",
+    "scene14_animation": "{{scene14_animation}}",
+    "scene14_motionType": "{{scene14_motionType}}",
+    "scene14_zoomStart": "{{scene14_zoomStart}}",
+    "scene14_zoomEnd": "{{scene14_zoomEnd}}",
+    "scene14_panStart": "{{scene14_panStart}}",
+    "scene14_panEnd": "{{scene14_panEnd}}",
+    "scene14_animationDuration": "{{scene14_animationDuration}}",
+    "scene14_easing": "{{scene14_easing}}",
+    "scene15_overlaidText": "{{scene15_overlaidText}}",
+    "scene15_voiceOverText": "{{scene15_voiceOverText}}",
+    "scene15_imagePrompt": "{{scene15_imagePrompt}}",
+    "scene15_animation": "{{scene15_animation}}",
+    "scene15_motionType": "{{scene15_motionType}}",
+    "scene15_zoomStart": "{{scene15_zoomStart}}",
+    "scene15_zoomEnd": "{{scene15_zoomEnd}}",
+    "scene15_panStart": "{{scene15_panStart}}",
+    "scene15_panEnd": "{{scene15_panEnd}}",
+    "scene15_animationDuration": "{{scene15_animationDuration}}",
+    "scene15_easing": "{{scene15_easing}}",
+    "scene16_overlaidText": "{{scene16_overlaidText}}",
+    "scene16_voiceOverText": "{{scene16_voiceOverText}}",
+    "scene16_imagePrompt": "{{scene16_imagePrompt}}",
+    "scene16_animation": "{{scene16_animation}}",
+    "scene16_motionType": "{{scene16_motionType}}",
+    "scene16_zoomStart": "{{scene16_zoomStart}}",
+    "scene16_zoomEnd": "{{scene16_zoomEnd}}",
+    "scene16_panStart": "{{scene16_panStart}}",
+    "scene16_panEnd": "{{scene16_panEnd}}",
+    "scene16_animationDuration": "{{scene16_animationDuration}}",
+    "scene16_easing": "{{scene16_easing}}",
+    "scene17_overlaidText": "{{scene17_overlaidText}}",
+    "scene17_voiceOverText": "{{scene17_voiceOverText}}",
+    "scene17_imagePrompt": "{{scene17_imagePrompt}}",
+    "scene17_animation": "{{scene17_animation}}",
+    "scene17_motionType": "{{scene17_motionType}}",
+    "scene17_zoomStart": "{{scene17_zoomStart}}",
+    "scene17_zoomEnd": "{{scene17_zoomEnd}}",
+    "scene17_panStart": "{{scene17_panStart}}",
+    "scene17_panEnd": "{{scene17_panEnd}}",
+    "scene17_animationDuration": "{{scene17_animationDuration}}",
+    "scene17_easing": "{{scene17_easing}}",
+    "scene18_overlaidText": "{{scene18_overlaidText}}",
+    "scene18_voiceOverText": "{{scene18_voiceOverText}}",
+    "scene18_imagePrompt": "{{scene18_imagePrompt}}",
+    "scene18_animation": "{{scene18_animation}}",
+    "scene18_motionType": "{{scene18_motionType}}",
+    "scene18_zoomStart": "{{scene18_zoomStart}}",
+    "scene18_zoomEnd": "{{scene18_zoomEnd}}",
+    "scene18_panStart": "{{scene18_panStart}}",
+    "scene18_panEnd": "{{scene18_panEnd}}",
+    "scene18_animationDuration": "{{scene18_animationDuration}}",
+    "scene18_easing": "{{scene18_easing}}",
+    "scene19_overlaidText": "{{scene19_overlaidText}}",
+    "scene19_voiceOverText": "{{scene19_voiceOverText}}",
+    "scene19_imagePrompt": "{{scene19_imagePrompt}}",
+    "scene19_animation": "{{scene19_animation}}",
+    "scene19_motionType": "{{scene19_motionType}}",
+    "scene19_zoomStart": "{{scene19_zoomStart}}",
+    "scene19_zoomEnd": "{{scene19_zoomEnd}}",
+    "scene19_panStart": "{{scene19_panStart}}",
+    "scene19_panEnd": "{{scene19_panEnd}}",
+    "scene19_animationDuration": "{{scene19_animationDuration}}",
+    "scene19_easing": "{{scene19_easing}}",
+    "scene20_overlaidText": "{{scene20_overlaidText}}",
+    "scene20_voiceOverText": "{{scene20_voiceOverText}}",
+    "scene20_imagePrompt": "{{scene20_imagePrompt}}",
+    "scene20_animation": "{{scene20_animation}}",
+    "scene20_motionType": "{{scene20_motionType}}",
+    "scene20_zoomStart": "{{scene20_zoomStart}}",
+    "scene20_zoomEnd": "{{scene20_zoomEnd}}",
+    "scene20_panStart": "{{scene20_panStart}}",
+    "scene20_panEnd": "{{scene20_panEnd}}",
+    "scene20_animationDuration": "{{scene20_animationDuration}}",
+    "scene20_easing": "{{scene20_easing}}"
+  },
+  "scenes": [
+    {
+      "id": "scene0_title_card",
+      "comment": "Cinematic title card — 8s — book/chapter name with gold text on dramatic background",
+      "duration": 8,
+      "elements": [
+        {
+          "id": "title_bg",
+          "type": "image",
+          "prompt": "{{title_backgroundPrompt}}, dramatic divine light rays, rich gold and deep indigo, cinematic wide shot, 8K",
+          "model": "flux-pro",
+          "resize": "cover",
+          "zoom": { "start": 3, "end": 0 },
+          "pan": { "start": "center", "end": "center" }
+        },
+        {
+          "id": "title_overlay",
+          "type": "rectangle",
+          "x": 0,
+          "y": 0,
+          "width": "100%",
+          "height": "100%",
+          "color": "#000000",
+          "opacity": 0.5
+        },
+        {
+          "id": "title_text",
+          "type": "text",
+          "text": "{{title_bookChapter}}",
+          "font-family": "Cinzel Decorative",
+          "font-size": 120,
+          "color": "#D4AF37",
+          "x": "center",
+          "y": "40%",
+          "width": "80%",
+          "text-align": "center",
+          "shadow-color": "#000000",
+          "shadow-offset": 8,
+          "animation": { "type": "fade-in", "duration": 1.5, "delay": 0.5 }
+        },
+        {
+          "id": "title_divider",
+          "type": "rectangle",
+          "x": "25%",
+          "y": "55%",
+          "width": "50%",
+          "height": 3,
+          "color": "#D4AF37",
+          "opacity": 0.8,
+          "animation": { "type": "fade-in", "duration": 1.0, "delay": 1.5 }
+        },
+        {
+          "id": "title_subtitle_text",
+          "type": "text",
+          "text": "{{title_subtitle}}",
+          "font-family": "Cinzel",
+          "font-size": 52,
+          "color": "#F5E6C8",
+          "x": "center",
+          "y": "60%",
+          "width": "70%",
+          "text-align": "center",
+          "shadow-color": "#000000",
+          "shadow-offset": 5,
+          "animation": { "type": "fade-in", "duration": 1.5, "delay": 2.0 }
+        }
+      ]
+    },
+    {
+      "id": "scene1_biblical",
+      "comment": "Biblical Scene 1 - {{scene1_overlaidText}} - {{scene1_motionType}} Effect",
+      "duration": "auto",
+      "elements": [
+        {
+          "id": "scene1_bg",
+          "type": "image",
+          "prompt": "{{scene1_imagePrompt}}, biblical, spiritual, reverent, cinematic lighting, professional photography, ultra-detailed, photorealistic, 8K quality, award-winning shot",
+          "model": "flux-pro",
+          "resize": "cover",
+          "duration": "auto",
+          "zoom": {
+            "start": "{{scene1_zoomStart}}",
+            "end": "{{scene1_zoomEnd}}"
+          },
+          "pan": {
+            "start": "{{scene1_panStart}}",
+            "end": "{{scene1_panEnd}}"
+          },
+          "pan-distance": 0.35
+        },
+        {
+          "id": "scene1_voice",
+          "type": "voice",
+          "text": "{{scene1_voiceOverText}}",
+          "voice": "NgBYGKDDq2Z8Hnhatgma",
+          "model": "elevenlabs",
+          "speed": 0.9
+        }
+      ]
+    },
+    {
+      "id": "scene2_biblical",
+      "comment": "Biblical Scene 2 - {{scene2_overlaidText}} - {{scene2_motionType}} Effect",
+      "duration": "auto",
+      "elements": [
+        {
+          "id": "scene2_bg",
+          "type": "image",
+          "prompt": "{{scene2_imagePrompt}}, biblical, spiritual, reverent, cinematic lighting, professional photography, ultra-detailed, photorealistic, 8K quality, award-winning shot",
+          "model": "flux-pro",
+          "resize": "cover",
+          "duration": "auto",
+          "zoom": {
+            "start": "{{scene2_zoomStart}}",
+            "end": "{{scene2_zoomEnd}}"
+          },
+          "pan": {
+            "start": "{{scene2_panStart}}",
+            "end": "{{scene2_panEnd}}"
+          },
+          "pan-distance": 0.35
+        },
+        {
+          "id": "scene2_voice",
+          "type": "voice",
+          "text": "{{scene2_voiceOverText}}",
+          "voice": "NgBYGKDDq2Z8Hnhatgma",
+          "model": "elevenlabs",
+          "speed": 0.9
+        }
+      ]
+    },
+    {
+      "id": "scene3_biblical",
+      "comment": "Biblical Scene 3 - {{scene3_overlaidText}} - {{scene3_motionType}} Effect",
+      "duration": "auto",
+      "elements": [
+        {
+          "id": "scene3_bg",
+          "type": "image",
+          "prompt": "{{scene3_imagePrompt}}, biblical, spiritual, reverent, cinematic lighting, professional photography, ultra-detailed, photorealistic, 8K quality, award-winning shot",
+          "model": "flux-pro",
+          "resize": "cover",
+          "duration": "auto",
+          "zoom": {
+            "start": "{{scene3_zoomStart}}",
+            "end": "{{scene3_zoomEnd}}"
+          },
+          "pan": {
+            "start": "{{scene3_panStart}}",
+            "end": "{{scene3_panEnd}}"
+          },
+          "pan-distance": 0.35
+        },
+        {
+          "id": "scene3_voice",
+          "type": "voice",
+          "text": "{{scene3_voiceOverText}}",
+          "voice": "NgBYGKDDq2Z8Hnhatgma",
+          "model": "elevenlabs",
+          "speed": 0.9
+        }
+      ]
+    },
+    {
+      "id": "scene4_biblical",
+      "comment": "Biblical Scene 4 - {{scene4_overlaidText}} - {{scene4_motionType}} Effect",
+      "duration": "auto",
+      "elements": [
+        {
+          "id": "scene4_bg",
+          "type": "image",
+          "prompt": "{{scene4_imagePrompt}}, biblical, spiritual, reverent, cinematic lighting, professional photography, ultra-detailed, photorealistic, 8K quality, award-winning shot",
+          "model": "flux-pro",
+          "resize": "cover",
+          "duration": "auto",
+          "zoom": {
+            "start": "{{scene4_zoomStart}}",
+            "end": "{{scene4_zoomEnd}}"
+          },
+          "pan": {
+            "start": "{{scene4_panStart}}",
+            "end": "{{scene4_panEnd}}"
+          },
+          "pan-distance": 0.35
+        },
+        {
+          "id": "scene4_voice",
+          "type": "voice",
+          "text": "{{scene4_voiceOverText}}",
+          "voice": "NgBYGKDDq2Z8Hnhatgma",
+          "model": "elevenlabs",
+          "speed": 0.9
+        }
+      ]
+    },
+    {
+      "id": "scene5_biblical",
+      "comment": "Biblical Scene 5 - {{scene5_overlaidText}} - {{scene5_motionType}} Effect",
+      "duration": "auto",
+      "elements": [
+        {
+          "id": "scene5_bg",
+          "type": "image",
+          "prompt": "{{scene5_imagePrompt}}, biblical, spiritual, reverent, cinematic lighting, professional photography, ultra-detailed, photorealistic, 8K quality, award-winning shot",
+          "model": "flux-pro",
+          "resize": "cover",
+          "duration": "auto",
+          "zoom": {
+            "start": "{{scene5_zoomStart}}",
+            "end": "{{scene5_zoomEnd}}"
+          },
+          "pan": {
+            "start": "{{scene5_panStart}}",
+            "end": "{{scene5_panEnd}}"
+          },
+          "pan-distance": 0.35
+        },
+        {
+          "id": "scene5_voice",
+          "type": "voice",
+          "text": "{{scene5_voiceOverText}}",
+          "voice": "NgBYGKDDq2Z8Hnhatgma",
+          "model": "elevenlabs",
+          "speed": 0.9
+        }
+      ]
+    },
+    {
+      "id": "scene6_biblical",
+      "comment": "Biblical Scene 6 - {{scene6_overlaidText}} - {{scene6_motionType}} Effect",
+      "duration": "auto",
+      "elements": [
+        {
+          "id": "scene6_bg",
+          "type": "image",
+          "prompt": "{{scene6_imagePrompt}}, biblical, spiritual, reverent, cinematic lighting, professional photography, ultra-detailed, photorealistic, 8K quality, award-winning shot",
+          "model": "flux-pro",
+          "resize": "cover",
+          "duration": "auto",
+          "zoom": {
+            "start": "{{scene6_zoomStart}}",
+            "end": "{{scene6_zoomEnd}}"
+          },
+          "pan": {
+            "start": "{{scene6_panStart}}",
+            "end": "{{scene6_panEnd}}"
+          },
+          "pan-distance": 0.35
+        },
+        {
+          "id": "scene6_voice",
+          "type": "voice",
+          "text": "{{scene6_voiceOverText}}",
+          "voice": "NgBYGKDDq2Z8Hnhatgma",
+          "model": "elevenlabs",
+          "speed": 0.9
+        }
+      ]
+    },
+    {
+      "id": "scene7_biblical",
+      "comment": "Biblical Scene 7 - {{scene7_overlaidText}} - {{scene7_motionType}} Effect",
+      "duration": "auto",
+      "elements": [
+        {
+          "id": "scene7_bg",
+          "type": "image",
+          "prompt": "{{scene7_imagePrompt}}, biblical, spiritual, reverent, cinematic lighting, professional photography, ultra-detailed, photorealistic, 8K quality, award-winning shot",
+          "model": "flux-pro",
+          "resize": "cover",
+          "duration": "auto",
+          "zoom": {
+            "start": "{{scene7_zoomStart}}",
+            "end": "{{scene7_zoomEnd}}"
+          },
+          "pan": {
+            "start": "{{scene7_panStart}}",
+            "end": "{{scene7_panEnd}}"
+          },
+          "pan-distance": 0.35
+        },
+        {
+          "id": "scene7_voice",
+          "type": "voice",
+          "text": "{{scene7_voiceOverText}}",
+          "voice": "NgBYGKDDq2Z8Hnhatgma",
+          "model": "elevenlabs",
+          "speed": 0.9
+        }
+      ]
+    },
+    {
+      "id": "scene8_biblical",
+      "comment": "Biblical Scene 8 - {{scene8_overlaidText}} - {{scene8_motionType}} Effect",
+      "duration": "auto",
+      "elements": [
+        {
+          "id": "scene8_bg",
+          "type": "image",
+          "prompt": "{{scene8_imagePrompt}}, biblical, spiritual, reverent, cinematic lighting, professional photography, ultra-detailed, photorealistic, 8K quality, award-winning shot",
+          "model": "flux-pro",
+          "resize": "cover",
+          "duration": "auto",
+          "zoom": {
+            "start": "{{scene8_zoomStart}}",
+            "end": "{{scene8_zoomEnd}}"
+          },
+          "pan": {
+            "start": "{{scene8_panStart}}",
+            "end": "{{scene8_panEnd}}"
+          },
+          "pan-distance": 0.35
+        },
+        {
+          "id": "scene8_voice",
+          "type": "voice",
+          "text": "{{scene8_voiceOverText}}",
+          "voice": "NgBYGKDDq2Z8Hnhatgma",
+          "model": "elevenlabs",
+          "speed": 0.9
+        }
+      ]
+    },
+    {
+      "id": "scene9_biblical",
+      "comment": "Biblical Scene 9 - {{scene9_overlaidText}} - {{scene9_motionType}} Effect",
+      "duration": "auto",
+      "elements": [
+        {
+          "id": "scene9_bg",
+          "type": "image",
+          "prompt": "{{scene9_imagePrompt}}, biblical, spiritual, reverent, cinematic lighting, professional photography, ultra-detailed, photorealistic, 8K quality, award-winning shot",
+          "model": "flux-pro",
+          "resize": "cover",
+          "duration": "auto",
+          "zoom": {
+            "start": "{{scene9_zoomStart}}",
+            "end": "{{scene9_zoomEnd}}"
+          },
+          "pan": {
+            "start": "{{scene9_panStart}}",
+            "end": "{{scene9_panEnd}}"
+          },
+          "pan-distance": 0.35
+        },
+        {
+          "id": "scene9_voice",
+          "type": "voice",
+          "text": "{{scene9_voiceOverText}}",
+          "voice": "NgBYGKDDq2Z8Hnhatgma",
+          "model": "elevenlabs",
+          "speed": 0.9
+        }
+      ]
+    },
+    {
+      "id": "scene10_biblical",
+      "comment": "Biblical Scene 10 - {{scene10_overlaidText}} - {{scene10_motionType}} Effect",
+      "duration": "auto",
+      "elements": [
+        {
+          "id": "scene10_bg",
+          "type": "image",
+          "prompt": "{{scene10_imagePrompt}}, biblical, spiritual, reverent, cinematic lighting, professional photography, ultra-detailed, photorealistic, 8K quality, award-winning shot",
+          "model": "flux-pro",
+          "resize": "cover",
+          "duration": "auto",
+          "zoom": {
+            "start": "{{scene10_zoomStart}}",
+            "end": "{{scene10_zoomEnd}}"
+          },
+          "pan": {
+            "start": "{{scene10_panStart}}",
+            "end": "{{scene10_panEnd}}"
+          },
+          "pan-distance": 0.35
+        },
+        {
+          "id": "scene10_voice",
+          "type": "voice",
+          "text": "{{scene10_voiceOverText}}",
+          "voice": "NgBYGKDDq2Z8Hnhatgma",
+          "model": "elevenlabs",
+          "speed": 0.9
+        }
+      ]
+    },
+    {
+      "id": "scene11_biblical",
+      "comment": "Biblical Scene 11 - {{scene11_overlaidText}} - {{scene11_motionType}} Effect",
+      "duration": "auto",
+      "elements": [
+        {
+          "id": "scene11_bg",
+          "type": "image",
+          "prompt": "{{scene11_imagePrompt}}, biblical, spiritual, reverent, cinematic lighting, professional photography, ultra-detailed, photorealistic, 8K quality, award-winning shot",
+          "model": "flux-pro",
+          "resize": "cover",
+          "duration": "auto",
+          "zoom": {
+            "start": "{{scene11_zoomStart}}",
+            "end": "{{scene11_zoomEnd}}"
+          },
+          "pan": {
+            "start": "{{scene11_panStart}}",
+            "end": "{{scene11_panEnd}}"
+          },
+          "pan-distance": 0.35
+        },
+        {
+          "id": "scene11_voice",
+          "type": "voice",
+          "text": "{{scene11_voiceOverText}}",
+          "voice": "NgBYGKDDq2Z8Hnhatgma",
+          "model": "elevenlabs",
+          "speed": 0.9
+        }
+      ]
+    },
+    {
+      "id": "scene12_biblical",
+      "comment": "Biblical Scene 12 - {{scene12_overlaidText}} - {{scene12_motionType}} Effect",
+      "duration": "auto",
+      "elements": [
+        {
+          "id": "scene12_bg",
+          "type": "image",
+          "prompt": "{{scene12_imagePrompt}}, biblical, spiritual, reverent, cinematic lighting, professional photography, ultra-detailed, photorealistic, 8K quality, award-winning shot",
+          "model": "flux-pro",
+          "resize": "cover",
+          "duration": "auto",
+          "zoom": {
+            "start": "{{scene12_zoomStart}}",
+            "end": "{{scene12_zoomEnd}}"
+          },
+          "pan": {
+            "start": "{{scene12_panStart}}",
+            "end": "{{scene12_panEnd}}"
+          },
+          "pan-distance": 0.35
+        },
+        {
+          "id": "scene12_voice",
+          "type": "voice",
+          "text": "{{scene12_voiceOverText}}",
+          "voice": "NgBYGKDDq2Z8Hnhatgma",
+          "model": "elevenlabs",
+          "speed": 0.9
+        }
+      ]
+    },
+    {
+      "id": "scene13_biblical",
+      "comment": "Biblical Scene 13 - {{scene13_overlaidText}} - {{scene13_motionType}} Effect",
+      "duration": "auto",
+      "elements": [
+        {
+          "id": "scene13_bg",
+          "type": "image",
+          "prompt": "{{scene13_imagePrompt}}, biblical, spiritual, reverent, cinematic lighting, professional photography, ultra-detailed, photorealistic, 8K quality, award-winning shot",
+          "model": "flux-pro",
+          "resize": "cover",
+          "duration": "auto",
+          "zoom": {
+            "start": "{{scene13_zoomStart}}",
+            "end": "{{scene13_zoomEnd}}"
+          },
+          "pan": {
+            "start": "{{scene13_panStart}}",
+            "end": "{{scene13_panEnd}}"
+          },
+          "pan-distance": 0.35
+        },
+        {
+          "id": "scene13_voice",
+          "type": "voice",
+          "text": "{{scene13_voiceOverText}}",
+          "voice": "NgBYGKDDq2Z8Hnhatgma",
+          "model": "elevenlabs",
+          "speed": 0.9
+        }
+      ]
+    },
+    {
+      "id": "scene14_biblical",
+      "comment": "Biblical Scene 14 - {{scene14_overlaidText}} - {{scene14_motionType}} Effect",
+      "duration": "auto",
+      "elements": [
+        {
+          "id": "scene14_bg",
+          "type": "image",
+          "prompt": "{{scene14_imagePrompt}}, biblical, spiritual, reverent, cinematic lighting, professional photography, ultra-detailed, photorealistic, 8K quality, award-winning shot",
+          "model": "flux-pro",
+          "resize": "cover",
+          "duration": "auto",
+          "zoom": {
+            "start": "{{scene14_zoomStart}}",
+            "end": "{{scene14_zoomEnd}}"
+          },
+          "pan": {
+            "start": "{{scene14_panStart}}",
+            "end": "{{scene14_panEnd}}"
+          },
+          "pan-distance": 0.35
+        },
+        {
+          "id": "scene14_voice",
+          "type": "voice",
+          "text": "{{scene14_voiceOverText}}",
+          "voice": "NgBYGKDDq2Z8Hnhatgma",
+          "model": "elevenlabs",
+          "speed": 0.9
+        }
+      ]
+    },
+    {
+      "id": "scene15_biblical",
+      "comment": "Biblical Scene 15 - {{scene15_overlaidText}} - {{scene15_motionType}} Effect",
+      "duration": "auto",
+      "elements": [
+        {
+          "id": "scene15_bg",
+          "type": "image",
+          "prompt": "{{scene15_imagePrompt}}, biblical, spiritual, reverent, cinematic lighting, professional photography, ultra-detailed, photorealistic, 8K quality, award-winning shot",
+          "model": "flux-pro",
+          "resize": "cover",
+          "duration": "auto",
+          "zoom": {
+            "start": "{{scene15_zoomStart}}",
+            "end": "{{scene15_zoomEnd}}"
+          },
+          "pan": {
+            "start": "{{scene15_panStart}}",
+            "end": "{{scene15_panEnd}}"
+          },
+          "pan-distance": 0.35
+        },
+        {
+          "id": "scene15_voice",
+          "type": "voice",
+          "text": "{{scene15_voiceOverText}}",
+          "voice": "NgBYGKDDq2Z8Hnhatgma",
+          "model": "elevenlabs",
+          "speed": 0.9
+        }
+      ]
+    },
+    {
+      "id": "scene16_biblical",
+      "comment": "Biblical Scene 16 - {{scene16_overlaidText}} - {{scene16_motionType}} Effect",
+      "duration": "auto",
+      "elements": [
+        {
+          "id": "scene16_bg",
+          "type": "image",
+          "prompt": "{{scene16_imagePrompt}}, biblical, spiritual, reverent, cinematic lighting, professional photography, ultra-detailed, photorealistic, 8K quality, award-winning shot",
+          "model": "flux-pro",
+          "resize": "cover",
+          "duration": "auto",
+          "zoom": {
+            "start": "{{scene16_zoomStart}}",
+            "end": "{{scene16_zoomEnd}}"
+          },
+          "pan": {
+            "start": "{{scene16_panStart}}",
+            "end": "{{scene16_panEnd}}"
+          },
+          "pan-distance": 0.35
+        },
+        {
+          "id": "scene16_voice",
+          "type": "voice",
+          "text": "{{scene16_voiceOverText}}",
+          "voice": "NgBYGKDDq2Z8Hnhatgma",
+          "model": "elevenlabs",
+          "speed": 0.9
+        }
+      ]
+    },
+    {
+      "id": "scene17_biblical",
+      "comment": "Biblical Scene 17 - {{scene17_overlaidText}} - {{scene17_motionType}} Effect",
+      "duration": "auto",
+      "elements": [
+        {
+          "id": "scene17_bg",
+          "type": "image",
+          "prompt": "{{scene17_imagePrompt}}, biblical, spiritual, reverent, cinematic lighting, professional photography, ultra-detailed, photorealistic, 8K quality, award-winning shot",
+          "model": "flux-pro",
+          "resize": "cover",
+          "duration": "auto",
+          "zoom": {
+            "start": "{{scene17_zoomStart}}",
+            "end": "{{scene17_zoomEnd}}"
+          },
+          "pan": {
+            "start": "{{scene17_panStart}}",
+            "end": "{{scene17_panEnd}}"
+          },
+          "pan-distance": 0.35
+        },
+        {
+          "id": "scene17_voice",
+          "type": "voice",
+          "text": "{{scene17_voiceOverText}}",
+          "voice": "NgBYGKDDq2Z8Hnhatgma",
+          "model": "elevenlabs",
+          "speed": 0.9
+        }
+      ]
+    },
+    {
+      "id": "scene18_biblical",
+      "comment": "Biblical Scene 18 - {{scene18_overlaidText}} - {{scene18_motionType}} Effect",
+      "duration": "auto",
+      "elements": [
+        {
+          "id": "scene18_bg",
+          "type": "image",
+          "prompt": "{{scene18_imagePrompt}}, biblical, spiritual, reverent, cinematic lighting, professional photography, ultra-detailed, photorealistic, 8K quality, award-winning shot",
+          "model": "flux-pro",
+          "resize": "cover",
+          "duration": "auto",
+          "zoom": {
+            "start": "{{scene18_zoomStart}}",
+            "end": "{{scene18_zoomEnd}}"
+          },
+          "pan": {
+            "start": "{{scene18_panStart}}",
+            "end": "{{scene18_panEnd}}"
+          },
+          "pan-distance": 0.35
+        },
+        {
+          "id": "scene18_voice",
+          "type": "voice",
+          "text": "{{scene18_voiceOverText}}",
+          "voice": "NgBYGKDDq2Z8Hnhatgma",
+          "model": "elevenlabs",
+          "speed": 0.9
+        }
+      ]
+    },
+    {
+      "id": "scene19_biblical",
+      "comment": "Biblical Scene 19 - {{scene19_overlaidText}} - {{scene19_motionType}} Effect",
+      "duration": "auto",
+      "elements": [
+        {
+          "id": "scene19_bg",
+          "type": "image",
+          "prompt": "{{scene19_imagePrompt}}, biblical, spiritual, reverent, cinematic lighting, professional photography, ultra-detailed, photorealistic, 8K quality, award-winning shot",
+          "model": "flux-pro",
+          "resize": "cover",
+          "duration": "auto",
+          "zoom": {
+            "start": "{{scene19_zoomStart}}",
+            "end": "{{scene19_zoomEnd}}"
+          },
+          "pan": {
+            "start": "{{scene19_panStart}}",
+            "end": "{{scene19_panEnd}}"
+          },
+          "pan-distance": 0.35
+        },
+        {
+          "id": "scene19_voice",
+          "type": "voice",
+          "text": "{{scene19_voiceOverText}}",
+          "voice": "NgBYGKDDq2Z8Hnhatgma",
+          "model": "elevenlabs",
+          "speed": 0.9
+        }
+      ]
+    },
+    {
+      "id": "scene20_biblical",
+      "comment": "Biblical Scene 20 - {{scene20_overlaidText}} - {{scene20_motionType}} Effect",
+      "duration": "auto",
+      "elements": [
+        {
+          "id": "scene20_bg",
+          "type": "image",
+          "prompt": "{{scene20_imagePrompt}}, biblical, spiritual, reverent, cinematic lighting, professional photography, ultra-detailed, photorealistic, 8K quality, award-winning shot",
+          "model": "flux-pro",
+          "resize": "cover",
+          "duration": "auto",
+          "zoom": {
+            "start": "{{scene20_zoomStart}}",
+            "end": "{{scene20_zoomEnd}}"
+          },
+          "pan": {
+            "start": "{{scene20_panStart}}",
+            "end": "{{scene20_panEnd}}"
+          },
+          "pan-distance": 0.35
+        },
+        {
+          "id": "scene20_voice",
+          "type": "voice",
+          "text": "{{scene20_voiceOverText}}",
+          "voice": "NgBYGKDDq2Z8Hnhatgma",
+          "model": "elevenlabs",
+          "speed": 0.9
+        }
+      ]
+    }
+  ],
+  "elements": [
+    {
+      "id": "movie_subtitles",
+      "type": "subtitles",
+      "language": "en",
+      "model": "default",
+      "settings": {
+        "style": "classic",
+        "font-family": "Oswald Bold",
+        "font-size": 80,
+        "position": "bottom-center",
+        "line-color": "#CCCCCC",
+        "word-color": "#FFFF00",
+        "outline-color": "#000000",
+        "outline-width": 8,
+        "shadow-color": "#000000",
+        "shadow-offset": 6,
+        "max-words-per-line": 4
+      }
+    }
+  ]
+}

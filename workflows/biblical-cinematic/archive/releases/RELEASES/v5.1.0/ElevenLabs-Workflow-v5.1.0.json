@@ -1,0 +1,450 @@
+{
+  "name": "BibleWorkflowv3",
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "// Get the input text from previous node\nconst inputText = $('Bible Chapter Text Input').item.json.inputText;\n\n// ENHANCED Build the request payload with improved Black Hebrew Israelite representation\nconst requestPayload = {\n  model: \"llama-3.1-sonar-large-128k-online\",\n  messages: [{\n    role: \"user\", \n    content: `You are a Biblical storytelling and video production expert specializing in authentic Black Hebrew Israelite biblical content. Create a script for a PRODUCTION-QUALITY 20-scene video that narrates the Bible chapter content provided: \"${inputText}\" exactly as it is—word for word and line for line. Do not summarize or paraphrase any part of the biblical text. Instead, break the Bible chapter into EXACTLY 20 SCENES that facilitate the creation of engaging biblical video content for a full-length production video.\n\nCRITICAL VISUAL REQUIREMENTS - READ CAREFULLY:\n- MANDATORY: ALL human characters must be depicted as Black African Hebrew Israelites with dark melanated skin, natural hair (locs/braids), wearing traditional Hebrew garments with tzitzit (fringes)\n- FORBIDDEN: No Caucasian, white, European, or light-skinned characters unless explicitly specified in the biblical text\n- REQUIRED CLOTHING: Traditional Hebrew robes, head coverings, prayer shawls with visible fringes (tzitzit), sandals\n- SKIN TONE: Rich dark melanated skin tones exclusively - use terms like \"deeply melanated,\" \"rich dark skin,\" \"African heritage\"\n- HAIR: Natural Black hair textures - locs, braids, afros, or covered with traditional head wraps\n\nFor each non-empty verse or sentence of the biblical text, create a separate scene where both the overlaid text and the voice-over text match the biblical text exactly.\n\nIf a verse is too short to meet the minimum voice-over text length of 20 words, combine it with the following verse(s) without altering the original biblical wording.\n\nYour output must be in JSON format following this exact schema:\n\n{\n  \"scenes\": [\n    {\n      \"overlaidText\": \"Direct biblical phrase from the text (3-8 words)\",\n      \"voiceOverText\": \"Exact biblical text word-for-word (20+ words minimum)\",\n      \"imagePrompt\": \"MANDATORY: Black Hebrew Israelite with deeply melanated skin, locs/natural hair, wearing traditional Hebrew garments with visible tzitzit fringes - [detailed biblical scene description] - photorealistic, ancient Middle Eastern setting, reverent biblical atmosphere\"\n    }\n  ]\n}\n\nENHANCED IMAGE PROMPT REQUIREMENTS:\n- ALWAYS start imagePrompt with: \"Black Hebrew Israelite with deeply melanated skin, natural hair (locs/braids), wearing traditional Hebrew robes with visible tzitzit fringes\"\n- ADD specific scene details after the character description\n- INCLUDE: \"photorealistic, ancient biblical times, Middle Eastern landscape, reverent spiritual atmosphere\"\n- AVOID: Any language that could result in European/Caucasian features\n- EMPHASIZE: \"Rich dark skin tone,\" \"African Hebrew heritage,\" \"traditional biblical garments\"\n\nIMPORTANT GUIDELINES:\n- Use the biblical text exactly as provided—word for word and line for line\n- Create a separate scene for each verse or sentence in the biblical text\n- VoiceOverText must be the exact biblical wording, no paraphrasing\n- OverlaidText should be direct quotes from the biblical text (3-8 words)\n- ImagePrompts MUST depict Black Hebrew Israelites with melanated skin and traditional garments\n- You MUST create EXACTLY 20 scenes regardless of input text length - distribute the content intelligently across all 20 scenes\n- For shorter texts, expand descriptions and context while maintaining biblical accuracy\n- For longer texts, segment logically while preserving all content across the 20 scenes\n- Focus on maintaining exact biblical wording and authentic Hebrew Israelite visual representation\n- ABSOLUTELY FORBIDDEN: Caucasian, white, European, or light-skinned characters unless explicitly mentioned in input text\n- REQUIRED IN EVERY SCENE: Black Hebrew Israelites with rich melanated skin, natural hair, Hebrew garments with fringes\n\nEXAMPLE IMAGE PROMPT STRUCTURE:\n\"Black Hebrew Israelite man with deeply melanated skin and natural locs, wearing traditional Hebrew robes with visible tzitzit fringes, [specific biblical scene action], ancient Middle Eastern landscape, photorealistic, reverent biblical atmosphere, rich dark skin tone, African Hebrew heritage\"\n\nReturn ONLY the JSON, no other text.`\n  }],\n  max_tokens: 5000,\n  temperature: 0.7\n};\n\n// Return the payload\nreturn [{\n  json: requestPayload\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1860,
+        40
+      ],
+      "id": "9f8335e7-55ac-4774-b33d-176d297b6e41",
+      "name": "Biblical Content Prompt Builder"
+    },
+    {
+      "parameters": {
+        "amount": 15
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -540,
+        140
+      ],
+      "id": "a7bb8630-b036-475f-935a-c61f610ea18b",
+      "name": "Wait 15 Seconds",
+      "webhookId": "f17237d9-4b2d-4272-af94-4ff174133de3"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "error-message-final",
+              "name": "errorMessage",
+              "value": "={{ $json.movie.message }}",
+              "type": "string"
+            },
+            {
+              "id": "error-status-final",
+              "name": "errorStatus",
+              "value": "{{ $json.movie.status }}",
+              "type": "string"
+            },
+            {
+              "id": "error-time-final",
+              "name": "errorTime",
+              "value": "={{ new Date().toISOString() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -540,
+        -60
+      ],
+      "id": "83658d6b-ae84-4a20-8f12-26429bc22a25",
+      "name": "Error Output"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "video-url-final",
+              "name": "finalVideoUrl",
+              "value": "={{ $json.movie.url }}",
+              "type": "string"
+            },
+            {
+              "id": "video-duration-final",
+              "name": "videoDuration",
+              "value": "={{ $json.movie.duration }}",
+              "type": "number"
+            },
+            {
+              "id": "video-size-final",
+              "name": "videoSize",
+              "value": "={{ $json.movie.size }}",
+              "type": "number"
+            },
+            {
+              "id": "completion-time-final",
+              "name": "completedAt",
+              "value": "={{ $json.movie.ended_at }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -540,
+        -260
+      ],
+      "id": "5b137d5d-4232-46e8-9349-03251c1e1601",
+      "name": "Final Video Output"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "id": "video-complete",
+                    "leftValue": "={{ $json.movie.status }}",
+                    "rightValue": "done",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Video Complete"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.movie.status }}",
+                    "rightValue": "error",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "video-error"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Video Error"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "id": "video-processing",
+                    "leftValue": "={{ $json.movie.status }}",
+                    "rightValue": "running",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Still Processing"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        -760,
+        -60
+      ],
+      "id": "cd5ac7b3-b2a6-415f-8b9b-db563ce406d6",
+      "name": "Video Status Router"
+    },
+    {
+      "parameters": {
+        "url": "https://api.json2video.com/v2/movies",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "project",
+              "value": "={{ $('Generate 16:9 Spiritual Video').item.json.project }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -900,
+        140
+      ],
+      "id": "07470eab-06ca-431c-b9e3-d952962d794c",
+      "name": "Check Video Status",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "pKpJaJTXBg3wLGgY",
+          "name": "Json2Video"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.json2video.com/v2/movies",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"template\": \"G5BGObQCF6meMAZG7F0g\",\n  \"resolution\": \"hd\",\n  \"quality\": \"high\",\n  \"variables\": {{ JSON.stringify($('Enhanced Format for 16:9 Template').item.json.templateVariables) }},\n  \"settings\": {\n    \"sceneDuration\": \"auto\",\n    \"voiceTiming\": \"natural\"\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1180,
+        40
+      ],
+      "id": "9ef45cdf-d7ff-411c-bb49-0c14a6472917",
+      "name": "Generate 16:9 Spiritual Video",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "pKpJaJTXBg3wLGgY",
+          "name": "Json2Video"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse Perplexity response and format for DYNAMIC BIBLICAL TEMPLATE\nconst response = items[0].json.choices[0].message.content;\n\n// Extract JSON from response\nlet sceneData;\ntry {\n  const jsonMatch = response.match(/\\{[\\s\\S]*\\}/);\n  sceneData = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(response);\n} catch (error) {\n  throw new Error('Failed to parse Perplexity response: ' + error.message);\n}\n\n// Get scenes array\nlet scenes = sceneData.scenes || [];\n\nif (scenes.length === 0) {\n  throw new Error('No scenes found in response. Raw response: ' + response);\n}\n\n// Function to clean text for JSON safety\nfunction cleanText(text) {\n  if (!text) return '';\n  return text\n    .replace(/\"/g, \"'\")\n    .replace(/\\n/g, \" \")\n    .replace(/\\r/g, \" \")\n    .replace(/\\t/g, \" \")\n    .replace(/[\\u0000-\\u001F\\u007F-\\u009F]/g, \"\")\n    .trim();\n}\n\n// Format scenes for TEMPLATE with DYNAMIC VARIABLES\nconst templateVariables = {};\n\n// Define motion effects array for variety\nconst motionTypes = [\"zoom-in\", \"zoom-out\", \"ken-burns\", \"pan-right\", \"pan-left\"];\n\n// Add ONLY the actual scenes as template variables WITH MOTION EFFECTS\nscenes.forEach((scene, index) => {\n  const sceneNum = index + 1;\n  \n  // Standard scene variables\n  templateVariables[`scene${sceneNum}_overlaidText`] = cleanText(scene.overlaidText || scene.title || `Scene ${sceneNum}`);\n  templateVariables[`scene${sceneNum}_voiceOverText`] = cleanText(scene.voiceOverText || scene.voiceoverText || scene.description || '');\n  templateVariables[`scene${sceneNum}_imagePrompt`] = cleanText(scene.imagePrompt || scene.imageDescription || `Biblical scene ${sceneNum}`);\n  \n  // CINEMATIC MOTION EFFECTS - Different for each scene (JSON2Video Compatible)\n  const sceneMotion = motionTypes[index % motionTypes.length];\n  \n  templateVariables[`scene${sceneNum}_animation`] = \"ken-burns\";\n  templateVariables[`scene${sceneNum}_motionType`] = sceneMotion;\n  \n  // Dynamic zoom and pan values for JSON2Video API (zoom: -10 to 10, pan: direction strings)\n  switch(sceneMotion) {\n    case \"zoom-in\":\n      templateVariables[`scene${sceneNum}_zoomStart`] = 2;  // Zoom in effect\n      templateVariables[`scene${sceneNum}_panStart`] = \"center\";\n      break;\n    case \"zoom-out\":\n      templateVariables[`scene${sceneNum}_zoomStart`] = -2; // Zoom out effect\n      templateVariables[`scene${sceneNum}_panStart`] = \"center\";\n      break;\n    case \"ken-burns\":\n      templateVariables[`scene${sceneNum}_zoomStart`] = 1;  // Light zoom in\n      templateVariables[`scene${sceneNum}_panStart`] = \"left\"; // Pan from left\n      break;\n    case \"pan-right\":\n      templateVariables[`scene${sceneNum}_zoomStart`] = 0;  // No zoom\n      templateVariables[`scene${sceneNum}_panStart`] = \"right\";\n      break;\n    case \"pan-left\":\n      templateVariables[`scene${sceneNum}_zoomStart`] = 0;  // No zoom\n      templateVariables[`scene${sceneNum}_panStart`] = \"left\";\n      break;\n  }\n  \n  // Motion timing and easing (keeping for compatibility)\n  templateVariables[`scene${sceneNum}_animationDuration`] = 8;\n  templateVariables[`scene${sceneNum}_easing`] = \"ease-in-out\";\n  templateVariables[`scene${sceneNum}_motionIntensity`] = \"medium\";\n});\n\n// Add scene count for template logic\ntemplateVariables.totalScenes = scenes.length;\ntemplateVariables.sceneDuration = \"auto\";\n\n// Add ElevenLabs voice configuration (EXACT FORMAT FROM WORKING WORKFLOW)\ntemplateVariables.voiceModel = \"elevenlabs\";\ntemplateVariables[\"voice.ConnectionID\"] = \"my-elevenlabs-connection\";\ntemplateVariables.voiceID = \"NgBYGKDDq2Z8Hnhatgma\";\n\n// Global motion settings\ntemplateVariables.globalAnimation = \"enabled\";\ntemplateVariables.motionSmoothing = \"high\";\ntemplateVariables.cinematicMode = \"professional\";\n\n// Return the template variables\nconst result = {\n  scenes: scenes,\n  templateVariables: templateVariables,\n  totalScenes: scenes.length,\n  debugInfo: {\n    originalResponseLength: response.length,\n    parsedScenesCount: scenes.length,\n    templateVariablesCount: Object.keys(templateVariables).length,\n    motionEffectsAdded: scenes.length,\n    voiceConfiguration: \"elevenlabs-enabled\",\n    timestamp: new Date().toISOString(),\n    version: 'Template Variables v6.2 - Ken Burns Effect Fixed'\n  }\n};\n\nreturn result;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1420,
+        40
+      ],
+      "id": "6b8396d2-4509-4042-8355-d809db1813db",
+      "name": "Enhanced Format for 16:9 Template"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.perplexity.ai/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify($json) }}",
+        "options": {
+          "lowercaseHeaders": false
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1640,
+        40
+      ],
+      "id": "6c72c206-fba3-4b27-9a2c-da95f5d6733d",
+      "name": "Perplexity AI Scene Generator",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "noOOIabOZieEx3ug",
+          "name": "Perplexity-API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "input-content-final",
+              "name": "inputText",
+              "value": "THE MOST HIGH CHOSEN PEOPLE\nShalom, Greetings to my beloved people Israel (12 Tribes). To the so called Blacks, Mexicans, Puerto Ricans, Norther America Indians, Haitians, Jamaicans and the rest of the 12 Tribes, please understand that you are very precious in the eyesight of the creator. He created the world for you and gave you dominion over everything. You are a Holy and special people unto him.\n\nHow special and Holy they are\nDeuteronomy Chapter 4:7-8 For what nation is there so great, who hath the Most High so nigh unto them, as the Most High our power is in all things that we call upon him for? 8 And what nation is there so great, that hath statutes and judgments so righteous as all this law, which I set before you this day?\n\n",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -2080,
+        40
+      ],
+      "id": "a7c584b4-d893-4f9b-855b-726e210f9d00",
+      "name": "Bible Chapter Text Input"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -2300,
+        40
+      ],
+      "id": "d13f2e9f-38ce-44d4-aba5-f9a6aee7c4db",
+      "name": "Start Workflow"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Wait 15 Seconds": {
+      "main": [
+        []
+      ]
+    },
+    "Video Status Router": {
+      "main": [
+        [
+          {
+            "node": "Final Video Output",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error Output",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait 15 Seconds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Video Status": {
+      "main": [
+        [
+          {
+            "node": "Video Status Router",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate 16:9 Spiritual Video": {
+      "main": [
+        [
+          {
+            "node": "Check Video Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enhanced Format for 16:9 Template": {
+      "main": [
+        [
+          {
+            "node": "Generate 16:9 Spiritual Video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Perplexity AI Scene Generator": {
+      "main": [
+        [
+          {
+            "node": "Enhanced Format for 16:9 Template",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Bible Chapter Text Input": {
+      "main": [
+        [
+          {
+            "node": "Biblical Content Prompt Builder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Biblical Content Prompt Builder": {
+      "main": [
+        [
+          {
+            "node": "Perplexity AI Scene Generator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start Workflow": {
+      "main": [
+        [
+          {
+            "node": "Bible Chapter Text Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "fca0854e-f4c5-464c-8605-6d3bb0328fa8",
+  "meta": {
+    "instanceId": "c71ecfbc6cd667fd069cd84f01f128834a34f2b3a956da891f33f10bd104d2b8"
+  },
+  "id": "MOxRK36brwn5ls8z",
+  "tags": []
+}

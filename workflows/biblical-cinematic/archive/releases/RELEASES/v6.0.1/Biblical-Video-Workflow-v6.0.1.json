@@ -1,0 +1,451 @@
+{
+  "name": "Biblical-Video-Workflow-v6.0.1",
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "// Get the input text from previous node\nconst inputText = $('Bible Chapter Text Input').item.json.inputText;\n\n// ENHANCED Build the request payload with improved Black Hebrew Israelite representation\nconst requestPayload = {\n  model: \"sonar-pro\",\n  messages: [{\n    role: \"user\", \n    content: `You are a Biblical storytelling and video production expert specializing in authentic Black Hebrew Israelite biblical content. Create a script for a PRODUCTION-QUALITY 20-scene video that narrates the Bible chapter content provided: \"${inputText}\" exactly as it is—word for word and line for line. Do not summarize or paraphrase any part of the biblical text. Instead, break the Bible chapter into EXACTLY 20 SCENES that facilitate the creation of engaging biblical video content for a full-length production video.\n\nCRITICAL VISUAL REQUIREMENTS - READ CAREFULLY:\n- MANDATORY: ALL human characters must be depicted as Black African Hebrew Israelites with dark melanated skin, natural hair (locs/braids), wearing traditional Hebrew garments with tzitzit (fringes)\n- FORBIDDEN: No Caucasian, white, European, or light-skinned characters unless explicitly specified in the biblical text\n- REQUIRED CLOTHING: Traditional Hebrew robes, head coverings, prayer shawls with visible fringes (tzitzit), sandals\n- SKIN TONE: Rich dark melanated skin tones exclusively - use terms like \"deeply melanated,\" \"rich dark skin,\" \"African heritage\"\n- HAIR: Natural Black hair textures - locs, braids, afros, or covered with traditional head wraps\n\nFor each non-empty verse or sentence of the biblical text, create a separate scene where both the overlaid text and the voice-over text match the biblical text exactly.\n\nIf a verse is too short to meet the minimum voice-over text length of 20 words, combine it with the following verse(s) without altering the original biblical wording.\n\nYour output must be in JSON format following this exact schema:\n\n{\n  \"scenes\": [\n    {\n      \"overlaidText\": \"Direct biblical phrase from the text (3-8 words)\",\n      \"voiceOverText\": \"Exact biblical text word-for-word (20+ words minimum)\",\n      \"imagePrompt\": \"MANDATORY: Black Hebrew Israelite with deeply melanated skin, locs/natural hair, wearing traditional Hebrew garments with visible tzitzit fringes - [detailed biblical scene description] - photorealistic, ancient Middle Eastern setting, reverent biblical atmosphere\"\n    }\n  ]\n}\n\nENHANCED IMAGE PROMPT REQUIREMENTS:\n- ALWAYS start imagePrompt with: \"Black Hebrew Israelite with deeply melanated skin, natural hair (locs/braids), wearing traditional Hebrew robes with visible tzitzit fringes\"\n- ADD specific scene details after the character description\n- INCLUDE: \"photorealistic, ancient biblical times, Middle Eastern landscape, reverent spiritual atmosphere\"\n- AVOID: Any language that could result in European/Caucasian features\n- EMPHASIZE: \"Rich dark skin tone,\" \"African Hebrew heritage,\" \"traditional biblical garments\"\n\nIMPORTANT GUIDELINES:\n- Use the biblical text exactly as provided—word for word and line for line\n- Create a separate scene for each verse or sentence in the biblical text\n- VoiceOverText must be the exact biblical wording, no paraphrasing\n- OverlaidText should be direct quotes from the biblical text (3-8 words)\n- ImagePrompts MUST depict Black Hebrew Israelites with melanated skin and traditional garments\n- You MUST create EXACTLY 20 scenes regardless of input text length - distribute the content intelligently across all 20 scenes\n- For shorter texts, expand descriptions and context while maintaining biblical accuracy\n- For longer texts, segment logically while preserving all content across the 20 scenes\n- Focus on maintaining exact biblical wording and authentic Hebrew Israelite visual representation\n- ABSOLUTELY FORBIDDEN: Caucasian, white, European, or light-skinned characters unless explicitly mentioned in input text\n- REQUIRED IN EVERY SCENE: Black Hebrew Israelites with rich melanated skin, natural hair, Hebrew garments with fringes\n\nEXAMPLE IMAGE PROMPT STRUCTURE:\n\"Black Hebrew Israelite man with deeply melanated skin and natural locs, wearing traditional Hebrew robes with visible tzitzit fringes, [specific biblical scene action], ancient Middle Eastern landscape, photorealistic, reverent biblical atmosphere, rich dark skin tone, African Hebrew heritage\"\n\nReturn ONLY the JSON, no other text.`\n  }],\n  max_tokens: 5000,\n  temperature: 0.7\n};\n\n// Return the payload\nreturn [{\n  json: requestPayload\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1776,
+        192
+      ],
+      "id": "b387dc69-bdb6-401d-86ab-7b9b1b6b932c",
+      "name": "Biblical Content Prompt Builder"
+    },
+    {
+      "parameters": {
+        "amount": 15
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -448,
+        288
+      ],
+      "id": "25f91d5b-f672-420b-bc74-18014e645c0f",
+      "name": "Wait 15 Seconds",
+      "webhookId": "f17237d9-4b2d-4272-af94-4ff174133de3"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "error-message-final",
+              "name": "errorMessage",
+              "value": "={{ $json.movie.message }}",
+              "type": "string"
+            },
+            {
+              "id": "error-status-final",
+              "name": "errorStatus",
+              "value": "{{ $json.movie.status }}",
+              "type": "string"
+            },
+            {
+              "id": "error-time-final",
+              "name": "errorTime",
+              "value": "={{ new Date().toISOString() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -448,
+        96
+      ],
+      "id": "c5c4f9fc-be8a-4fdd-b3a8-6988ccc261f3",
+      "name": "Error Output"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "video-url-final",
+              "name": "finalVideoUrl",
+              "value": "={{ $json.movie.url }}",
+              "type": "string"
+            },
+            {
+              "id": "video-duration-final",
+              "name": "videoDuration",
+              "value": "={{ $json.movie.duration }}",
+              "type": "number"
+            },
+            {
+              "id": "video-size-final",
+              "name": "videoSize",
+              "value": "={{ $json.movie.size }}",
+              "type": "number"
+            },
+            {
+              "id": "completion-time-final",
+              "name": "completedAt",
+              "value": "={{ $json.movie.ended_at }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -448,
+        -112
+      ],
+      "id": "05b83d8b-8b49-40a3-8630-4193a548baf1",
+      "name": "Final Video Output"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "id": "video-complete",
+                    "leftValue": "={{ $json.movie.status }}",
+                    "rightValue": "done",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Video Complete"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.movie.status }}",
+                    "rightValue": "error",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "video-error"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Video Error"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "id": "video-processing",
+                    "leftValue": "={{ $json.movie.status }}",
+                    "rightValue": "running",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Still Processing"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        -672,
+        96
+      ],
+      "id": "e9558c1e-c29a-4c6f-936e-2c143e16bc74",
+      "name": "Video Status Router"
+    },
+    {
+      "parameters": {
+        "url": "https://api.json2video.com/v2/movies",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "project",
+              "value": "={{ $('Generate 16:9 Spiritual Video').item.json.project }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -816,
+        288
+      ],
+      "id": "644e5873-e917-4ba3-95f6-80e0345c9c1c",
+      "name": "Check Video Status",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "IQFBIpDp17fAX0ka",
+          "name": "JSON2Video"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.json2video.com/v2/movies",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"template\": \"G5BGObQCF6meMAZG7F0g\",\n  \"resolution\": \"hd\",\n  \"quality\": \"high\",\n  \"variables\": {{ JSON.stringify($('Enhanced Format for 16:9 Template').item.json.templateVariables) }},\n  \"settings\": {\n    \"sceneDuration\": \"auto\",\n    \"voiceTiming\": \"natural\"\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1088,
+        192
+      ],
+      "id": "e610d507-7728-455a-8fa0-9bb2ec493fba",
+      "name": "Generate 16:9 Spiritual Video",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "IQFBIpDp17fAX0ka",
+          "name": "JSON2Video"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse Perplexity response and format for DYNAMIC BIBLICAL TEMPLATE\nconst response = items[0].json.choices[0].message.content;\n\n// IMPROVED JSON EXTRACTION with multiple fallback strategies\nlet sceneData;\ntry {\n  // Strategy 1: Try to extract JSON from markdown code blocks (```json...```)\n  let jsonText = response;\n  const codeBlockMatch = response.match(/```(?:json)?\\s*([\\s\\S]*?)```/);\n  if (codeBlockMatch) {\n    jsonText = codeBlockMatch[1].trim();\n  }\n  \n  // Strategy 2: Find JSON object (match from first { to last })\n  const jsonMatch = jsonText.match(/\\{[\\s\\S]*\\}/);\n  if (jsonMatch) {\n    sceneData = JSON.parse(jsonMatch[0]);\n  } else {\n    // Strategy 3: Try parsing the entire response as JSON\n    sceneData = JSON.parse(jsonText);\n  }\n} catch (error) {\n  // Enhanced error message with response preview\n  const preview = response.substring(0, 500);\n  throw new Error(\n    `Failed to parse Perplexity response: ${error.message}\\n\\n` +\n    `Response preview (first 500 chars):\\n${preview}\\n\\n` +\n    `Response length: ${response.length} characters`\n  );\n}\n\n// Get scenes array\nlet scenes = sceneData.scenes || [];\n\nif (scenes.length === 0) {\n  throw new Error('No scenes found in response. Raw response: ' + response);\n}\n\n// Function to clean text for JSON safety\nfunction cleanText(text) {\n  if (!text) return '';\n  return text\n    .replace(/\"/g, \"'\")\n    .replace(/\\n/g, \" \")\n    .replace(/\\r/g, \" \")\n    .replace(/\\t/g, \" \")\n    .replace(/[\\u0000-\\u001F\\u007F-\\u009F]/g, \"\")\n    .trim();\n}\n\n// Format scenes for TEMPLATE with DYNAMIC VARIABLES\nconst templateVariables = {};\n\n// Define motion effects array for variety\nconst motionTypes = [\"zoom-in\", \"zoom-out\", \"ken-burns\", \"pan-right\", \"pan-left\"];\n\n// Add ONLY the actual scenes as template variables WITH MOTION EFFECTS\nscenes.forEach((scene, index) => {\n  const sceneNum = index + 1;\n  \n  // Standard scene variables\n  templateVariables[`scene${sceneNum}_overlaidText`] = cleanText(scene.overlaidText || scene.title || `Scene ${sceneNum}`);\n  templateVariables[`scene${sceneNum}_voiceOverText`] = cleanText(scene.voiceOverText || scene.voiceoverText || scene.description || '');\n  templateVariables[`scene${sceneNum}_imagePrompt`] = cleanText(scene.imagePrompt || scene.imageDescription || `Biblical scene ${sceneNum}`);\n  \n  // CINEMATIC MOTION EFFECTS - Different for each scene (JSON2Video Compatible)\n  const sceneMotion = motionTypes[index % motionTypes.length];\n  \n  templateVariables[`scene${sceneNum}_animation`] = \"ken-burns\";\n  templateVariables[`scene${sceneNum}_motionType`] = sceneMotion;\n  \n  // Dynamic zoom and pan values for JSON2Video API (zoom: -10 to 10, pan: direction strings)\n  switch(sceneMotion) {\n    case \"zoom-in\":\n      templateVariables[`scene${sceneNum}_zoomStart`] = 2;  // Zoom in effect\n      templateVariables[`scene${sceneNum}_panStart`] = \"center\";\n      break;\n    case \"zoom-out\":\n      templateVariables[`scene${sceneNum}_zoomStart`] = -2; // Zoom out effect\n      templateVariables[`scene${sceneNum}_panStart`] = \"center\";\n      break;\n    case \"ken-burns\":\n      templateVariables[`scene${sceneNum}_zoomStart`] = 1;  // Light zoom in\n      templateVariables[`scene${sceneNum}_panStart`] = \"left\"; // Pan from left\n      break;\n    case \"pan-right\":\n      templateVariables[`scene${sceneNum}_zoomStart`] = 0;  // No zoom\n      templateVariables[`scene${sceneNum}_panStart`] = \"right\";\n      break;\n    case \"pan-left\":\n      templateVariables[`scene${sceneNum}_zoomStart`] = 0;  // No zoom\n      templateVariables[`scene${sceneNum}_panStart`] = \"left\";\n      break;\n  }\n  \n  // Motion timing and easing (keeping for compatibility)\n  templateVariables[`scene${sceneNum}_animationDuration`] = 8;\n  templateVariables[`scene${sceneNum}_easing`] = \"ease-in-out\";\n  templateVariables[`scene${sceneNum}_motionIntensity`] = \"medium\";\n});\n\n// Add scene count for template logic\ntemplateVariables.totalScenes = scenes.length;\ntemplateVariables.sceneDuration = \"auto\";\n\n// Add ElevenLabs voice configuration (EXACT FORMAT FROM WORKING WORKFLOW)\ntemplateVariables.voiceModel = \"elevenlabs\";\ntemplateVariables[\"voice.ConnectionID\"] = \"my-elevenlabs-connection\";\ntemplateVariables.voiceID = \"NgBYGKDDq2Z8Hnhatgma\";\n\n// Global motion settings\ntemplateVariables.globalAnimation = \"enabled\";\ntemplateVariables.motionSmoothing = \"high\";\ntemplateVariables.cinematicMode = \"professional\";\n\n// Return the template variables\nconst result = {\n  scenes: scenes,\n  templateVariables: templateVariables,\n  totalScenes: scenes.length,\n  debugInfo: {\n    originalResponseLength: response.length,\n    parsedScenesCount: scenes.length,\n    templateVariablesCount: Object.keys(templateVariables).length,\n    motionEffectsAdded: scenes.length,\n    voiceConfiguration: \"elevenlabs-enabled\",\n    timestamp: new Date().toISOString(),\n    version: 'Template Variables v6.3 - Enhanced JSON Parsing'\n  }\n};\n\nreturn result;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1328,
+        192
+      ],
+      "id": "47862a9b-2ab1-4bfd-80ce-32edda321995",
+      "name": "Enhanced Format for 16:9 Template"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.perplexity.ai/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify($json) }}",
+        "options": {
+          "lowercaseHeaders": false
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1552,
+        192
+      ],
+      "id": "91eb9208-58c5-4216-8b26-d252e30ad84d",
+      "name": "Perplexity AI Scene Generator",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "51gZbdd09SBMCLO2",
+          "name": "Perplexity"
+        },
+        "httpBearerAuth": {
+          "id": "bEBJFUXESU2EcWlR",
+          "name": "Bearer Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "input-content-final",
+              "name": "inputText",
+              "value": "And they walked in the midst of the fire, praising God, and blessing the Lord. Then Azarias stood up and prayed on this manner, and opening his mouth in the midst of the fire, said, Blessed art thou, O Lord God of our fathers: thy Name is worthy to be praised, and glorified for evermore.\nFor thou art righteous in all the things that thou hast done to us: yea, true are all thy works: thy ways are right, and all thy judgments truth. In all the things that thou hast brought upon us, and upon the holy citie of our fathers, even Jerusalem, thou hast executed true judgment: for according to truth and judgment, didst thou bring all these things upon us, because of our sins.\nFor we have sinned and committed iniquitie, departing from thee. In all things have we trespassed, and not obeyed thy Commandments, nor kept them, neither done as thou hast commanded us, that it might go well with us.\nWherefore all that thou hast brought upon us, and every thing that thou hast done to us, thou hast done in true judgment. And thou didst deliver us into the hands of lawless enemies, most hateful forsakers of God and to an unjust King, and the most wicked in all the world.\nAnd now we can not open our mouths, we are become a shame, and reproach to thy servants, and to them that worship thee. Yet deliver us not up wholly for thy Names sake, neither disannul thou thy Covenant: And cause not thy mercy to depart from us: for thy beloved Abrahams sake: for thy servant Isaacs sake, and for thy holy Israels sake.\nTo whom thou hast spoken and promised, That thou wouldest multiply their seed as the stars of heaven, and as the sand that lieth upon the sea shore. For we, O Lord, are become less then any nation, and be kept under this day in all the world, because of our sins.\nNeither is there at this time, Prince, or Prophet, or leader, or burnt offering, or sacrifice, or oblation, or incense, or place to sacrifice before thee, and to find mercy. Nevertheless in a contrite heart, and an humble spirit, let us be accepted.\nLike as in the burnt offering of rams and bullocks, and like as in ten thousands of fat lambs: so let our sacrifice be in thy sight this day, and grant that we may wholly go after thee: for they shall not be confounded that put their trust in thee. And now we follow thee, with all our heart, we fear thee, and seek thy face.\nPut us not to shame: but deal with us after thy loving kindness, and according to the multitude of thy mercies. deliver us also according to thy marvelous works, and give glory to thy Name, O Lord, and let all them that do thy servants hurt be ashamed.\nAnd let them be confounded in all their power and might, and let their strength be broken. And let them know that thou art Lord, the only God, and glorious over the whole world.\nAnd the kings servants that put them in, ceased not to make the oven hot with rosin, pitch, tow, and small wood. So that the flame streamed forth above the furnace, forty and nine cubits: And it passed through, and burnt those Chaldeans it found about the furnace.\nBut the Angel of the Lord came down into the oven, together with Azarias and his fellows, and smote the flame of the fire out of the oven: And made the midst of the furnace, as it had been a moist whistling wind, so that the fire touched them not at all, neither hurt nor troubled them. Then the three, as out of one mouth, praised, glorified, and blessed God in the furnace, saying; Blessed art thou, O Lord God of our fathers: and to be praised and exalted above all for ever.\nAnd blessed is thy glorious and holy Name: and to be praised and exalted above all for ever. Blessed art thou in the Temple of thine holy glory: and to be praised and glorified above all for ever.\nBlessed art thou that beholdest the depths, and sittest upon the Cherubims, and to be praised and exalted above all for ever. Blessed art thou on the glorious Throne of thy kingdom: and to be praised and glorified above all for ever.\nBlessed art thou in the firmament of heaven: and above all to be praised and glorified for ever. O all ye works of the Lord, blesse ye the Lord: praise and exalt him above all for ever.\nO ye heavens, blesse ye the Lord: praise and exalt him above all for ever. O ye Angels of the Lord, blesse ye the Lord: praise and exalt him above all for ever.\nO all ye waters that be above the heaven, blesse ye the Lord: praise and exalt him above all for ever. O all ye powers of the Lord, blesse ye the Lord: praise and exalt him above all for ever.\nO ye Sun and Moon, blesse ye the Lord: praise and exalt him above all for ever. O ye stars of heaven, blesse ye the Lord: praise and exalt him above all for ever.\nO every shower and dew, blesse ye the Lord: praise and exalt him above all for ever. O all ye winds, blesse ye the Lord: praise and exalt him above all for ever.\nO ye fire and heat, blesse ye the Lord: praise and exalt him above all for ever. O ye Winter and Summer, blesse ye the Lord: praise and exalt him above all for ever.\nO ye dews and stormes of snow, blesse ye the Lord: praise and exalt him above all for ever. O ye nights and days, blesse ye the Lord: praise and exalt him above all for ever.\nO ye light and darkness, blesse ye the Lord: praise and exalt him above all for ever. O ye yce and cold, blesse ye the Lord: praise and exalt him above all for ever.\nO ye frost and snow, blesse ye the Lord: praise and exalt him above all for ever. O ye lightnings and clouds, blesse ye the Lord: praise and exalt him above all for ever.\nO let the earth blesse the Lord: praise and exalt him above all for ever. O ye mountains and little hills, blesse ye the Lord: praise and exalt him above all for ever.\nO all ye things that grow on the earth, blesse ye the Lord: praise and exalt him above all for ever. O ye fountains, blesse ye the Lord: praise and exalt him above all for ever.\nO ye seas and rivers, blesse ye the Lord: praise and exalt him above all for ever. O ye whales and all that move in the waters, blesse ye the Lord: praise and exalt him above all for ever.\nO all ye fowls of the air, blesse ye the Lord: praise and exalt him above all for ever. O all ye beasts and cattle, blesse ye the Lord: praise and exalt him above all for ever.\nO ye children of men, blesse ye the Lord: praise and exalt him above all for ever. O Israel blesse ye the Lord: praise and exalt him above all for ever.\nO ye priests of the Lord, blesse ye the Lord: praise and exalt him above all for ever. O ye servants of the Lord, blesse ye the Lord: praise and exalt him above all for ever.\nO ye spirits and souls of the righteous, blesse ye the Lord, praise and exalt him above all for ever. O ye holy and humble men of heart, blesse ye the Lord: praise and exalt him above all for ever.\nO Ananias, Azarias, and Misael, blesse ye the Lord, praise and exalt him above all for ever: for he hath delivered us from hell, and saved us from the hand of death, and delivered us out of the midst of the furnace, and burning flame: even out of the midst of the fire hath he delivered us. O give thanks unto the Lord, because he is gracious: for his mercy endureth for ever.\nO all ye that worship the Lord, blesse the God of gods, praise him, and give him thanks: for his mercy endureth for ever.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1984,
+        192
+      ],
+      "id": "0f6eaec8-7fd6-468e-8e8e-0faf3945ce47",
+      "name": "Bible Chapter Text Input"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -2208,
+        192
+      ],
+      "id": "5ce4170b-5c81-4b4d-9ac4-9fbd2d07a609",
+      "name": "Start Workflow"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Video Status Router": {
+      "main": [
+        [
+          {
+            "node": "Final Video Output",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error Output",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait 15 Seconds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Video Status": {
+      "main": [
+        [
+          {
+            "node": "Video Status Router",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate 16:9 Spiritual Video": {
+      "main": [
+        [
+          {
+            "node": "Check Video Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enhanced Format for 16:9 Template": {
+      "main": [
+        [
+          {
+            "node": "Generate 16:9 Spiritual Video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Perplexity AI Scene Generator": {
+      "main": [
+        [
+          {
+            "node": "Enhanced Format for 16:9 Template",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Bible Chapter Text Input": {
+      "main": [
+        [
+          {
+            "node": "Biblical Content Prompt Builder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Biblical Content Prompt Builder": {
+      "main": [
+        [
+          {
+            "node": "Perplexity AI Scene Generator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start Workflow": {
+      "main": [
+        [
+          {
+            "node": "Bible Chapter Text Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "7b991f75-beaf-421b-bad6-88931f69231a",
+  "meta": {
+    "instanceId": "f5b33db607759726aefe86ee17e7320ab5e95ed8e2259c583a195da148f7abf2"
+  },
+  "id": "EoKZA8nxY1edNKXo1m3If",
+  "tags": []
+}

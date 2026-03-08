@@ -1,0 +1,161 @@
+{
+    "id": "main4_dynamic_generator",
+    "comment": "DYNAMIC Long-Form Video Template - Generates content from user input like Make.com workflow",
+    "resolution": "full-hd",
+    "variables": {
+      "userInputText": "Enter your content here and it will automatically generate 5 beautiful scenes",
+      "scene1_title": "{{scene1_title}}",
+      "scene1_voiceOverText": "{{scene1_voiceOverText}}",
+      "scene1_imagePrompt": "{{scene1_imagePrompt}}",
+      "scene1_overlaidText": "{{scene1_overlaidText}}",
+      "scene2_title": "{{scene2_title}}",
+      "scene2_voiceOverText": "{{scene2_voiceOverText}}",
+      "scene2_imagePrompt": "{{scene2_imagePrompt}}",
+      "scene2_overlaidText": "{{scene2_overlaidText}}",
+      "scene3_title": "{{scene3_title}}",
+      "scene3_voiceOverText": "{{scene3_voiceOverText}}",
+      "scene3_imagePrompt": "{{scene3_imagePrompt}}",
+      "scene3_overlaidText": "{{scene3_overlaidText}}",
+      "scene4_title": "{{scene4_title}}",
+      "scene4_voiceOverText": "{{scene4_voiceOverText}}",
+      "scene4_imagePrompt": "{{scene4_imagePrompt}}",
+      "scene4_overlaidText": "{{scene4_overlaidText}}",
+      "scene5_title": "{{scene5_title}}",
+      "scene5_voiceOverText": "{{scene5_voiceOverText}}",
+      "scene5_imagePrompt": "{{scene5_imagePrompt}}",
+      "scene5_overlaidText": "{{scene5_overlaidText}}"
+    },
+    "scenes": [
+      {
+        "id": "scene1_dynamic",
+        "comment": "Scene 1 - {{scene1_title}}",
+        "duration": 8,
+        "elements": [
+          {
+            "id": "scene1_bg",
+            "type": "image",
+            "prompt": "{{scene1_imagePrompt}}, cinematic lighting, professional photography, ultra-detailed, photorealistic, 8K quality, award-winning shot",
+            "model": "flux-pro",
+            "resize": "cover",
+            "duration": 8
+          },
+          {
+            "id": "scene1_voice",
+            "type": "voice",
+            "text": "{{scene1_voiceOverText}}",
+            "voice": "en-US-JennyNeural",
+            "model": "azure"
+          }
+        ]
+      },
+      {
+        "id": "scene2_dynamic",
+        "comment": "Scene 2 - {{scene2_title}}",
+        "duration": 8,
+        "elements": [
+          {
+            "id": "scene2_bg",
+            "type": "image",
+            "prompt": "{{scene2_imagePrompt}}, cinematic lighting, professional photography, ultra-detailed, photorealistic, 8K quality, award-winning shot",
+            "model": "flux-pro",
+            "resize": "cover",
+            "duration": 8
+          },
+          {
+            "id": "scene2_voice",
+            "type": "voice",
+            "text": "{{scene2_voiceOverText}}",
+            "voice": "en-US-JennyNeural",
+            "model": "azure"
+          }
+        ]
+      },
+      {
+        "id": "scene3_dynamic",
+        "comment": "Scene 3 - {{scene3_title}}",
+        "duration": 8,
+        "elements": [
+          {
+            "id": "scene3_bg",
+            "type": "image",
+            "prompt": "{{scene3_imagePrompt}}, cinematic lighting, professional photography, ultra-detailed, photorealistic, 8K quality, award-winning shot",
+            "model": "flux-pro",
+            "resize": "cover",
+            "duration": 8
+          },
+          {
+            "id": "scene3_voice",
+            "type": "voice",
+            "text": "{{scene3_voiceOverText}}",
+            "voice": "en-US-JennyNeural",
+            "model": "azure"
+          }
+        ]
+      },
+      {
+        "id": "scene4_dynamic",
+        "comment": "Scene 4 - {{scene4_title}}",
+        "duration": 8,
+        "elements": [
+          {
+            "id": "scene4_bg",
+            "type": "image",
+            "prompt": "{{scene4_imagePrompt}}, cinematic lighting, professional photography, ultra-detailed, photorealistic, 8K quality, award-winning shot",
+            "model": "flux-pro",
+            "resize": "cover",
+            "duration": 8
+          },
+          {
+            "id": "scene4_voice",
+            "type": "voice",
+            "text": "{{scene4_voiceOverText}}",
+            "voice": "en-US-JennyNeural",
+            "model": "azure"
+          }
+        ]
+      },
+      {
+        "id": "scene5_dynamic",
+        "comment": "Scene 5 - {{scene5_title}}",
+        "duration": 8,
+        "elements": [
+          {
+            "id": "scene5_bg",
+            "type": "image",
+            "prompt": "{{scene5_imagePrompt}}, cinematic lighting, professional photography, ultra-detailed, photorealistic, 8K quality, award-winning shot",
+            "model": "flux-pro",
+            "resize": "cover",
+            "duration": 8
+          },
+          {
+            "id": "scene5_voice",
+            "type": "voice",
+            "text": "{{scene5_voiceOverText}}",
+            "voice": "en-US-JennyNeural",
+            "model": "azure"
+          }
+        ]
+      }
+    ],
+    "elements": [
+      {
+        "id": "movie_subtitles",
+        "type": "subtitles",
+        "language": "en",
+        "model": "default",
+        "settings": {
+          "style": "classic",
+          "font-family": "Oswald Bold",
+          "font-size": 200,
+          "position": "bottom-center",
+          "line-color": "#CCCCCC",
+          "word-color": "#FFFF00",
+          "outline-color": "#000000",
+          "outline-width": 8,
+          "shadow-color": "#000000",
+          "shadow-offset": 6,
+          "max-words-per-line": 4
+        }
+      }
+    ]
+  }
