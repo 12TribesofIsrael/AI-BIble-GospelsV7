@@ -1,5 +1,5 @@
 {
-  "name": "Biblical Video Workflow v8.0 - Kling AI Motion",
+  "name": "Biblical Video Workflow v8.0 - Kling v2.1 Standard",
   "nodes": [
     {
       "parameters": {
@@ -363,7 +363,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://fal.run/fal-ai/kling-video/v3/standard/image-to-video",
+        "url": "https://fal.run/fal-ai/kling-video/v2.1/standard/image-to-video",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -379,9 +379,9 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ image_url: $json.images[0].url, prompt: $('Parse Scenes').item.json.motionDescription, duration: '15', cfg_scale: 0.5 }) }}",
+        "jsonBody": "={{ JSON.stringify({ image_url: $json.images[0].url, prompt: $('Parse Scenes').item.json.motionDescription, duration: '10', cfg_scale: 0.5 }) }}",
         "options": {
-          "timeout": 600000
+          "timeout": 300000
         }
       },
       "type": "n8n-nodes-base.httpRequest",

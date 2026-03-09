@@ -8,10 +8,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -1424,
-        240
+        -7280,
+        816
       ],
-      "id": "d4d92c14-8313-462e-97d1-202a64080a5e",
+      "id": "62c59e54-ce70-422f-a30c-72b36cdaa2dd",
       "name": "Biblical Content Prompt Builder"
     },
     {
@@ -21,10 +21,10 @@
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
       "position": [
-        -96,
-        336
+        -5488,
+        720
       ],
-      "id": "6ad7a69d-e002-498b-be11-e0dedc32f715",
+      "id": "a3b99fb6-5ba4-4fd9-b96b-11a80889d084",
       "name": "Wait 15 Seconds",
       "webhookId": "f17237d9-4b2d-4272-af94-4ff174133de3"
     },
@@ -57,10 +57,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -96,
-        144
+        -5488,
+        528
       ],
-      "id": "048d3f54-55aa-4336-bfee-fe3b4cb8356b",
+      "id": "bf980923-1e7b-4ee8-a9e6-48ad19997da5",
       "name": "Error Output"
     },
     {
@@ -98,10 +98,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -96,
-        -64
+        -5488,
+        336
       ],
-      "id": "16309c93-27eb-4795-9632-639a1cfe3978",
+      "id": "e4b1d5b9-3017-4f6b-ad0a-718a2a9e2494",
       "name": "Final Video Output"
     },
     {
@@ -187,10 +187,10 @@
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3,
       "position": [
-        -320,
-        144
+        -5712,
+        432
       ],
-      "id": "559d4ce6-d55c-4b3c-b7f5-300b9049afda",
+      "id": "8da7edf7-2b49-4639-a1e9-6817eba75833",
       "name": "Video Status Router"
     },
     {
@@ -212,10 +212,10 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        -464,
-        336
+        -5936,
+        600
       ],
-      "id": "33cc1abe-b5f1-409e-9eb2-33ec10b393b1",
+      "id": "e4984fdd-dd45-4966-9a60-bb48cc245bc8",
       "name": "Check Video Status",
       "credentials": {
         "httpHeaderAuth": {
@@ -232,16 +232,16 @@
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"template\": \"cHtpubYegDm2patG2tym\",\n  \"resolution\": \"hd\",\n  \"quality\": \"high\",\n  \"variables\": {{ JSON.stringify($('Build Template Vars').item.json.templateVariables) }},\n  \"settings\": {\n    \"sceneDuration\": \"auto\",\n    \"voiceTiming\": \"natural\"\n  }\n}",
+        "jsonBody": "={\n  \"template\": \"yia2WweBcQAohYpBbByf\",\n  \"resolution\": \"hd\",\n  \"quality\": \"high\",\n  \"variables\": {{ JSON.stringify($('Build Template Vars').item.json.templateVariables) }},\n  \"settings\": {\n    \"sceneDuration\": \"auto\",\n    \"voiceTiming\": \"natural\"\n  }\n}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        -176,
-        240
+        -6160,
+        600
       ],
-      "id": "fe457fc9-425b-49e0-9a00-a566ea4787a6",
+      "id": "a55e36e3-c086-4915-ba7c-534bbecc115f",
       "name": "Generate v8 Kling Video",
       "credentials": {
         "httpHeaderAuth": {
@@ -268,10 +268,10 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        -1200,
-        240
+        -7056,
+        816
       ],
-      "id": "889dd655-0b50-4560-903b-424f2b6db735",
+      "id": "b7a51785-0347-4968-be50-557d991069f7",
       "name": "Perplexity AI Scene Generator",
       "credentials": {
         "httpBearerAuth": {
@@ -287,7 +287,7 @@
             {
               "id": "input-content-final",
               "name": "inputText",
-              "value": "At that time, Jesus went on the Sabbath day through the corn, and his Disciples were an hungered, and began to pluck the ears of corn, and to eate. But when the Pharisees saw it, they said unto him, Behold, thy Disciples do that which is not lawful to do upon the Sabbath day.\nBut he said unto them, have ye not read what David did when he was an hungered, and they that were with him, How he entred into the house of God, and did eate the show bread, which was not lawful for him to eate, neither for them which were with him, but, only for the Priests? Or have ye not read in the law, how that on the Sabbath days the Priests in the Temple profane the Sabbath, and are blameless?\nBut I say unto you, that in this place is one greater then the Temple. But if ye had known what this meaneth, I will have mercy, and not sacrifice, ye would not have condemned the guiltless.\nFor the son of man is Lord even of the Sabbath day. And when he was departed thence, he went into their Synagogue.\nAnd behold, there was a man which had his hand withered, and they asked him, saying, Is it lawful to heal on the Sabbath days? that they might accuse him.\nAnd he said unto them, What man shall there be among you, that shall have one sheep: and if it fall into a pit on the Sabbath day, will he not lay hold on it, and lift it out? How much then is a man better then a sheep?\nWherefore it is lawful to do well on the Sabbath days. Then saith he to the man, Stretch forth thine hand: and he stretched it forth, and it was restored whole, like as the other.\nThen the Pharisees went out, and held a counsel against him, how they might destroy him. But when Jesus knew it, he withdrew himself from thence: and great multitudes followed him, and he healed them all, And charged them that they should not make him known: That it might be fulfilled which was spoken by Isaiah the Prophet, saying, Behold, my servant whom I have chosen, my beloved in whom my soul is well pleased: I will put my spirit upon him, and he shall show judgment to the Gentiles.\nHe shall not strive, nor cry, neither shall any man hear his voice in the streets. A bruised reed shall he not break, and smoking flax shall he not quench, till he send forth judgment unto victory.\nAnd in his name shall the Gentiles trust. Then was brought unto him one possessed with a devil, blind, and dumb: and he healed him, insomuch that the blind and dumb both spoke and saw.\nAnd all the people were amazed, and said, Is this the son of David? But when the Pharisees heard it, they said, This fellow doeth not cast out devils, but by Beelzebub the prince of the devils.\nAnd Jesus knew their thoughts, and said unto them, every kingdom divided against it self, is brought to desolation: and every city or house divided against it self, shall not stand. And if Satan cast out Satan, he is divided against himself; how shall then his kingdom stand?\nAnd if I by Beelzebub cast out devils, by whom do your children cast them out? Therefore they shall be your Judges.\nBut if I cast out devils by the Spirit of God, then the kingdom of God is come unto you. Or else, how can one enter into a strong mans house, and spoil his goods, except he first bind the strong man, and then he will spoil his house.\nHe that is not with me, is against me: and he that gathereth not with me, scattereth abroad. Wherefore I say unto you, All manner of sin and blasphemy shall be forgiuen unto men: but the blasphemy against the holy Ghost, shall not be forgiuen unto men.\nAnd whosoever speaketh a word against the son of man, it shall be forgiuen him: but whosoever speaketh against the holy Ghost, it shall not be forgiuen him, neither in this world, neither in the world to come. Either make the tree good, and his fruit good: Or else make the tree corrupt, and his fruit corrupt: For the tree is known by his fruit.\nO generation of vipers, how can ye, being evil, speak good things? For out of the abundance of the heart the mouth speaketh.\nA good man out of the good treasure of the heart, bringeth forth good things: and an evil man out of the evil treasure, bringeth forth evil things. But I say unto you, That every idle word that men shall speak, they shall give account thereof in the day of judgment.\nFor by thy words thou shalt be justified, and by thy words thou shalt be condemned. Then certain of the Scribes, and of the Pharisees, answered, saying, Master, we would see a sign from thee.\nBut he answered, and said to them, An evil and adulterous generation seeketh after a sign, and there shall no sign be given to it, but the sign of the Prophet Jonah. For as Jonah was three days and three nights in the whales belly: so shall the son of man be three days and three nights in the heart of the earth.\nThe men of Nineveh shall rise in judgment with this generation, and shall condemn it, because they repented at the preaching of Jonah, and behold, a greater then Jonah is here. The Queen of the South shall rise up in the judgment with this generation, and shall condemn it: for she came from the uttermost parts of the earth to hear the wisdom of Solomon, and behold, a greater then Solomon is here.\nWhen the unclean spirit is gone out of a man, he walketh through dry places, seeking rest, and findeth none. Then he saith, I will return into my house from whence I came out; And when he is come, he findeth it empty, swept, and garnished.\nThen goeth he, and taketh with himself seven other spirits more wicked then himself, and they enter in and dwell there: And the last state of that man is worse then the first. even so shall it be also unto this wicked generation.\nWhile he yet talked to the people, behold, his mother and his brethren stood without, desiring to speak with him. Then one said unto him, Behold, thy mother and thy brethren stand without, desiring to speak with thee.\nBut he answered, and said unto him that told him, Who is my mother? And who are my brethren?\nAnd he stretched forth his hand toward his disciples, and said, Behold, my mother and my brethren. For whosoever shall do the will of my Father which is in heaven, the same is my brother, and sister, and mother.",
+              "value": "And it happened, after that Alexander son of Philip, the Macedonian, who came out of the land of Kittim, had smitten Darius king of the Persians and Medes, that he reigned in his stead, the first over Greece, And made many wars, and won many strong holds, and slew the kings of the earth, And went through to the ends of the earth, and took spoils of many nations, insomuch, that the earth was quiet before him, whereupon he was exalted, and his heart was lifted up. And he gathered a mighty strong host, and ruled over countries, and nations and kings, who became tributaries unto him.\nAnd after these things he fell sick, and perceived that he should die. Wherefore he called his servants, such as were honorable, and had been brought up with him from his youth, and parted kis kingdom among them, while he was yet alive: So Alexander reigned twelve years, and (then) died.\nAnd his servants bare rule every one in his place. And after his death they all put crowns upon themselves so did their sons after them, many years, and evils were multiplied in the earth.\nAnd there came out of them a wicked root, Antiochus surnamed Epiphanes, son of Antiochus the king, who had been an hostage at Rome, and he reigned in the hundred and thirty and seventh year of the kingdom of the Greeks. In those days went there out of Israel wicked men, who persuaded many, saying, Let us go, and make a covenant with the heathen, that are round about us: for since we departed from them, we have had much sorrow.\nSo this device pleased them well. Then certain of the people were so forward herein, that they went to the king, who gave them license to do after the ordinances of the heathen.\nWhereupon they built a place of exercise at Jerusalem, according to the customs of the heathen, And made themselves, uncircumcised, and forsook the holy covenant, and joined themselves to the heathen, and were sold to do mischief.",
               "type": "string"
             }
           ]
@@ -297,10 +297,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -1632,
-        240
+        -7504,
+        816
       ],
-      "id": "e8049de2-08bf-4e63-b92e-43774fc06330",
+      "id": "a76893f6-c45b-4457-a8b4-602a23197250",
       "name": "Bible Chapter Text Input"
     },
     {
@@ -308,10 +308,10 @@
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
       "position": [
-        -1856,
-        240
+        -7728,
+        816
       ],
-      "id": "7a59796e-c92a-4f24-875d-412230011f5f",
+      "id": "1dcc6d06-8380-4ddb-b6b6-e2bbd088862d",
       "name": "Start Workflow"
     },
     {
@@ -321,10 +321,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -976,
-        240
+        -6832,
+        816
       ],
-      "id": "a1b2c3d4-0001-4000-8000-000000000001",
+      "id": "a77ca0b0-31a5-40ce-a879-fdeded21bddf",
       "name": "Parse Scenes"
     },
     {
@@ -354,16 +354,16 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        -676,
-        340
+        -6384,
+        792
       ],
-      "id": "a1b2c3d4-0002-4000-8000-000000000002",
+      "id": "01d8126c-cb5e-49b6-9cdc-daa524720f47",
       "name": "Generate FLUX Image"
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "https://fal.run/fal-ai/kling-video/v3/standard/image-to-video",
+        "url": "https://fal.run/fal-ai/kling-video/v1.6/standard/image-to-video",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -379,45 +379,44 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ image_url: $json.images[0].url, prompt: $('Parse Scenes').item.json.motionDescription, duration: '15', cfg_scale: 0.5 }) }}",
+        "jsonBody": "={{ JSON.stringify({ image_url: $json.images[0].url, prompt: $('Parse Scenes').item.json.motionDescription, duration: '5', cfg_scale: 0.5 }) }}",
         "options": {
-          "timeout": 600000
+          "timeout": 300000
         }
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        -476,
-        340
+        -6160,
+        888
       ],
-      "id": "a1b2c3d4-0003-4000-8000-000000000003",
+      "id": "73620e97-40fc-4815-8efc-903314291a72",
       "name": "Generate Kling Video"
     },
     {
       "parameters": {
-        "jsCode": "// Aggregate all scene results into template variables for JSON2Video\nconst allScenes = $('Parse Scenes').all();\nconst templateVariables = {};\n\nfor (let i = 0; i < items.length; i++) {\n  const sceneNum = allScenes[i].json.sceneNum;\n  const videoUrl = items[i].json.video?.url || items[i].json.data?.video?.url || '';\n  templateVariables['scene' + sceneNum + '_videoUrl'] = videoUrl;\n  templateVariables['scene' + sceneNum + '_voiceOverText'] = allScenes[i].json.voiceOverText;\n  templateVariables['scene' + sceneNum + '_overlaidText'] = allScenes[i].json.overlaidText;\n}\n\n// PAD missing scenes up to 20 to prevent JSON2Video 'Not all elements have metadata' error\n// Reuse last valid scene's video URL so all 20 template slots have valid URLs\nconst lastSceneNum = items.length;\nfor (let i = items.length + 1; i <= 20; i++) {\n  templateVariables['scene' + i + '_videoUrl'] = templateVariables['scene' + lastSceneNum + '_videoUrl'] || '';\n  templateVariables['scene' + i + '_voiceOverText'] = '';\n  templateVariables['scene' + i + '_overlaidText'] = '';\n}\n\ntemplateVariables.totalScenes = items.length;\n\nreturn [{\n  json: {\n    templateVariables: templateVariables,\n    totalScenes: items.length,\n    debugInfo: {\n      timestamp: new Date().toISOString(),\n      version: 'v8.0 - Kling AI Video Motion',\n      scenesGenerated: items.length,\n      scenesPadded: Math.max(0, 20 - items.length)\n    }\n  }\n}];\n"
+        "jsCode": "// Aggregate all scene results into template variables for JSON2Video\nconst allScenes = $('Parse Scenes').all();\nconst templateVariables = {};\n\nfor (let i = 0; i < items.length; i++) {\n  const sceneNum = allScenes[i].json.sceneNum;\n  const videoUrl = items[i].json.video?.url || items[i].json.data?.video?.url || '';\n  templateVariables['scene' + sceneNum + '_videoUrl'] = videoUrl;\n  templateVariables['scene' + sceneNum + '_voiceOverText'] = allScenes[i].json.voiceOverText;\n  templateVariables['scene' + sceneNum + '_overlaidText'] = allScenes[i].json.overlaidText;\n}\ntemplateVariables.totalScenes = items.length;\n\nreturn [{\n  json: {\n    templateVariables: templateVariables,\n    totalScenes: items.length,\n    debugInfo: {\n      timestamp: new Date().toISOString(),\n      version: 'v8.0 - Kling AI Video Motion'\n    }\n  }\n}];\n"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -376,
-        240
+        -6384,
+        600
       ],
-      "id": "a1b2c3d4-0004-4000-8000-000000000004",
+      "id": "73187798-32e7-4708-8109-5395ee59bbab",
       "name": "Build Template Vars"
     },
     {
       "parameters": {
-        "batchSize": 1,
         "options": {}
       },
       "type": "n8n-nodes-base.splitInBatches",
       "typeVersion": 3,
       "position": [
-        -876,
-        240
+        -6608,
+        816
       ],
-      "id": "a1b2c3d4-0005-4000-8000-000000000005",
+      "id": "b223068d-c5ab-4ff6-b0b9-c96bb836a8e3",
       "name": "Loop Over Items"
     }
   ],
@@ -594,10 +593,10 @@
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "f06a4454-0105-4d1c-831e-7daeb71f23e0",
+  "versionId": "af45d821-0eae-444a-8bf4-14060dc43e1a",
   "meta": {
     "instanceId": "1eeefdc376334d61f01d36766d159f46708c6e5b85ad002d5bccb8d39028dc5e"
   },
-  "id": "E4WGaVxw2jkQRbB4",
+  "id": "UwxbdiuD4U2ZZCMz",
   "tags": []
 }
