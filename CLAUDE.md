@@ -118,11 +118,10 @@ python app.py
 | [workflows/biblical-cinematic/server/app.py](workflows/biblical-cinematic/server/app.py) | FastAPI server — `/api/clean`, `/api/generate`, `/api/status`, `/api/render/*` (Step 4), `/api/upload/*` (Step 5 YouTube) |
 | [workflows/biblical-cinematic/server/requirements.txt](workflows/biblical-cinematic/server/requirements.txt) | Server dependencies |
 | [workflows/biblical-cinematic/text_processor/biblical_text_processor_v2.py](workflows/biblical-cinematic/text_processor/biblical_text_processor_v2.py) | KJV text cleaner/splitter (imported by server) |
-| [workflows/biblical-cinematic/n8n/Biblical-Video-Workflow-v7.2.json](workflows/biblical-cinematic/n8n/Biblical-Video-Workflow-v7.2.json) | **Current production workflow** — Import into n8n (v7.2: field-name-anchored JSON extraction, proven stable) |
-| [workflows/biblical-cinematic/n8n/Biblical-Video-Workflow-v8.0.json](workflows/biblical-cinematic/n8n/Biblical-Video-Workflow-v8.0.json) | **v8.0 Kling workflow** — FLUX + Kling AI video motion (testing) |
-| [workflows/biblical-cinematic/n8n/Biblical-Video-Workflow-v6.0.2.json](workflows/biblical-cinematic/n8n/Biblical-Video-Workflow-v6.0.2.json) | Legacy v6 reference — do NOT edit or use |
-| [workflows/biblical-cinematic/templates/JSON2Video-Template-v7-Phase1_no_card.json](workflows/biblical-cinematic/templates/JSON2Video-Template-v7-Phase1_no_card.json) | v7.2 production template — 20 scenes, Ken Burns, proven working baseline |
-| [workflows/biblical-cinematic/templates/JSON2Video-Template-v8-Kling.json](workflows/biblical-cinematic/templates/JSON2Video-Template-v8-Kling.json) | **v8.0 Kling template** — 20 scenes with video elements (testing) |
+| [workflows/biblical-cinematic/n8n/v7.2-production.json](workflows/biblical-cinematic/n8n/v7.2-production.json) | **Current production workflow** — Import into n8n (v7.2: field-name-anchored JSON extraction, proven stable) |
+| [workflows/biblical-cinematic/n8n/v8.0-kling.json](workflows/biblical-cinematic/n8n/v8.0-kling.json) | **v8.0 Kling workflow** — FLUX + Kling AI video motion (testing) |
+| [workflows/biblical-cinematic/templates/v7-ken-burns.json](workflows/biblical-cinematic/templates/v7-ken-burns.json) | v7.2 production template — 20 scenes, Ken Burns, proven working baseline |
+| [workflows/biblical-cinematic/templates/v8-kling.json](workflows/biblical-cinematic/templates/v8-kling.json) | **v8.0 Kling template** — 20 scenes with video elements (testing) |
 | [workflows/biblical-cinematic/scripts/post_produce.py](workflows/biblical-cinematic/scripts/post_produce.py) | FFmpeg post-production — concat intro/outro, overlay logo, mix music |
 | [workflows/biblical-cinematic/scripts/batch_post_produce.py](workflows/biblical-cinematic/scripts/batch_post_produce.py) | Batch mode — process all videos in output/raw/ at once |
 | [workflows/biblical-cinematic/scripts/upload_youtube.py](workflows/biblical-cinematic/scripts/upload_youtube.py) | YouTube uploader — OAuth2, auto-generates title/description/thumbnail, uploads as unlisted |
@@ -189,9 +188,9 @@ npm run lint       # ESLint
 - **JSON2Video rendering** — HD 1920×1080 with Ken Burns effects
 
 ### Files
-- **Workflow:** `n8n/Biblical-Video-Workflow-v7.2.json` (current production)
-- **Template:** `templates/JSON2Video-Template-v7-Phase1_no_card.json` (proven working baseline, 20 scenes, no title card)
-- **Reference workflows:** `n8n/Biblical-Video-Workflow-v6.0.2.json` (legacy stable, do not edit)
+- **Workflow:** `n8n/v7.2-production.json` (current production)
+- **Template:** `templates/v7-ken-burns.json` (proven working baseline, 20 scenes, no title card)
+- **Legacy backups:** `backups/workflows/v6.0.2-master_2026-03-08.json` (reference only)
 
 ### Critical Notes
 

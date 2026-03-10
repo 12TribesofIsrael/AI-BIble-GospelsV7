@@ -145,8 +145,8 @@ new_jscode = (
 
 # Update both workflow files
 for fname in [
-    'n8n/Biblical-Video-Workflow-v7.2.json',
-    'n8n/Biblical-Video-Workflow-v8.0.json',
+    'n8n/v7.2-production.json',
+    'n8n/v8.0-kling.json',
 ]:
     fpath = BASE / fname
     if not fpath.exists():
