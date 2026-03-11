@@ -18,6 +18,7 @@ from pathlib import Path
 from datetime import datetime, timezone
 
 from dotenv import load_dotenv, find_dotenv
+from typing import Optional
 
 # find_dotenv() walks up the directory tree from this file to locate .env
 load_dotenv(find_dotenv(), override=True)
@@ -119,6 +120,8 @@ render_state: dict = {
 
 class CleanRequest(BaseModel):
     text: str
+    book: Optional[str] = None
+    chapter: Optional[str] = None
 
 
 class Section(BaseModel):
@@ -137,6 +140,7 @@ class CleanResponse(BaseModel):
 class GenerateRequest(BaseModel):
     text: str           # The approved (possibly edited) section text
     section_index: int = 0
+    model: str = "v1.6"  # Kling model version (v1.6, v2.1, v3.0)
 
 
 class GenerateResponse(BaseModel):
@@ -182,6 +186,69 @@ async def api_bible_chapter(book: str, chapter: str):
     raise HTTPException(status_code=404, detail=f"Book '{book}' not found")
 
 
+# ── Cinematic Intro Generator ─────────────────────────────────────────────────
+
+_ONES = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine",
+         "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen",
+         "Seventeen", "Eighteen", "Nineteen"]
+_TENS = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"]
+
+def _number_to_words(n: int) -> str:
+    """Convert 1-150 to words. E.g. 1 → 'One', 42 → 'Forty Two', 150 → 'One Hundred Fifty'."""
+    if n <= 0:
+        return str(n)
+    if n < 20:
+        return _ONES[n]
+    if n < 100:
+        return (_TENS[n // 10] + (" " + _ONES[n % 10] if n % 10 else "")).strip()
+    h = n // 100
+    remainder = n % 100
+    result = _ONES[h] + " Hundred"
+    if remainder:
+        result += " " + _number_to_words(remainder)
+    return result
+
+
+async def _generate_cinematic_intro(book: str, chapter: str, passage_text: str) -> str:
+    """Use GPT-4o-mini to generate a brief cinematic intro for the chapter."""
+    chapter_word = _number_to_words(int(chapter)) if chapter.isdigit() else chapter
+
+    try:
+        import openai
+        client = openai.AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY", ""))
+        resp = await client.chat.completions.create(
+            model="gpt-4o-mini",
+            max_tokens=120,
+            temperature=0.7,
+            messages=[{
+                "role": "system",
+                "content": (
+                    "You write brief cinematic introductions for King James Bible chapters. "
+                    "These intros will be narrated by a voice-over artist at the start of a cinematic video."
+                ),
+            }, {
+                "role": "user",
+                "content": (
+                    f"Write a cinematic introduction for {book}, Chapter {chapter_word} from the King James Bible.\n\n"
+                    f"Rules:\n"
+                    f"- Start with exactly: 'The Book of {book}. Chapter {chapter_word}.'\n"
+                    f"- Then add 1-2 sentences summarizing what happens in this chapter in a dramatic, cinematic tone.\n"
+                    f"- Use present tense (e.g., 'God speaks', 'Moses leads').\n"
+                    f"- Keep the total under 40 words.\n"
+                    f"- Do NOT use quotes or colons.\n\n"
+                    f"Here is the beginning of the chapter text for context:\n"
+                    f"{passage_text[:500]}"
+                ),
+            }],
+        )
+        intro = resp.choices[0].message.content.strip()
+        return intro
+    except Exception as e:
+        # Fallback to static intro if AI fails
+        print(f"[WARN] AI intro generation failed: {e}. Using static fallback.")
+        return f"The Book of {book}. Chapter {chapter_word}."
+
+
 # ── API Routes ────────────────────────────────────────────────────────────────
 
 @app.post("/api/clean", response_model=CleanResponse)
@@ -193,6 +260,12 @@ async def api_clean(req: CleanRequest):
     cleaned = clean_text(req.text)
     cleaned = kjv_narration_fix(cleaned)
     cleaned = kjv_narration_fix(cleaned)  # Second pass catches cascading substitutions
+
+    # Generate cinematic intro if book/chapter provided
+    cinematic_intro = ""
+    if req.book and req.chapter:
+        cinematic_intro = await _generate_cinematic_intro(req.book, req.chapter, cleaned)
+
     words = split_into_words(cleaned)
 
     if not words:
@@ -203,11 +276,16 @@ async def api_clean(req: CleanRequest):
     sections: list[Section] = []
     for i, section_words in enumerate(raw_sections):
         formatted = format_section(section_words, i + 1)
-        word_count = len(section_words)
+        # Prepend cinematic intro to the first section only
+        if i == 0 and cinematic_intro:
+            formatted = cinematic_intro + "\n\n" + formatted.strip()
+        else:
+            formatted = formatted.strip()
+        word_count = len(formatted.split())
         sections.append(
             Section(
                 index=i,
-                text=formatted.strip(),
+                text=formatted,
                 word_count=word_count,
                 estimated_minutes=round(word_count / 214, 1),
                 estimated_scenes=word_count // 40,
@@ -223,14 +301,21 @@ async def api_generate(req: GenerateRequest):
     if not req.text.strip():
         raise HTTPException(status_code=400, detail="Approved text cannot be empty.")
 
-    load_dotenv(find_dotenv(), override=True)
-    N8N_WEBHOOK_URL = os.getenv("N8N_WEBHOOK_URL", "")
+    # Model → webhook mapping (published n8n workflows)
+    KLING_WEBHOOKS = {
+        "v1.6": "https://bmbautomations.app.n8n.cloud/webhook/0541ecb6-9bd3-4e03-967d-25d80d62ca5a",
+        "v2.1": "https://bmbautomations.app.n8n.cloud/webhook/ee98ef6e-7b3e-4275-b8c8-36cc72354aa8",
+        "v3.0": "https://bmbautomations.app.n8n.cloud/webhook/7bf81240-f351-4f21-a245-dfec108ad086",
+    }
 
+    N8N_WEBHOOK_URL = KLING_WEBHOOKS.get(req.model)
     if not N8N_WEBHOOK_URL:
         raise HTTPException(
-            status_code=500,
-            detail="N8N_WEBHOOK_URL is not set in your .env file.",
+            status_code=400,
+            detail=f"Unknown model '{req.model}'. Choose from: {', '.join(KLING_WEBHOOKS.keys())}",
         )
+
+    print(f"🎬 Generating with Kling {req.model} → {N8N_WEBHOOK_URL[:60]}...")
 
     payload = {"text": req.text.strip()}
 
@@ -755,6 +840,37 @@ LANDING_PAGE = """<!DOCTYPE html>
           rows="14"
           class="w-full bg-gray-950 border border-gray-700 rounded-xl px-4 py-3 text-gray-100 text-sm focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
         ></textarea>
+
+        <!-- Model selector -->
+        <div class="mt-4 mb-4 p-4 bg-gray-800 rounded-xl border border-gray-700">
+          <label class="block text-sm font-medium text-gray-300 mb-2">Kling AI Model</label>
+          <div class="grid grid-cols-3 gap-3">
+            <label class="relative cursor-pointer">
+              <input type="radio" name="kling-model" value="v1.6" class="peer sr-only" checked>
+              <div class="p-3 rounded-lg border-2 border-gray-600 peer-checked:border-amber-500 peer-checked:bg-amber-500/10 transition-all">
+                <div class="text-sm font-semibold text-white">v1.6 Standard</div>
+                <div class="text-xs text-gray-400 mt-1">Basic motion · Fastest</div>
+                <div class="text-xs text-amber-400 mt-1 font-medium">~$4.50/video</div>
+              </div>
+            </label>
+            <label class="relative cursor-pointer">
+              <input type="radio" name="kling-model" value="v2.1" class="peer sr-only">
+              <div class="p-3 rounded-lg border-2 border-gray-600 peer-checked:border-amber-500 peer-checked:bg-amber-500/10 transition-all">
+                <div class="text-sm font-semibold text-white">v2.1 Standard</div>
+                <div class="text-xs text-gray-400 mt-1">Better motion · Mid-tier</div>
+                <div class="text-xs text-amber-400 mt-1 font-medium">~$5.50/video</div>
+              </div>
+            </label>
+            <label class="relative cursor-pointer">
+              <input type="radio" name="kling-model" value="v3.0" class="peer sr-only">
+              <div class="p-3 rounded-lg border-2 border-gray-600 peer-checked:border-amber-500 peer-checked:bg-amber-500/10 transition-all">
+                <div class="text-sm font-semibold text-white">v3.0 Standard</div>
+                <div class="text-xs text-gray-400 mt-1">Best quality · Slowest</div>
+                <div class="text-xs text-amber-400 mt-1 font-medium">~$7.00/video</div>
+              </div>
+            </label>
+          </div>
+        </div>
 
         <div class="flex items-center justify-between mt-4">
           <p class="text-xs text-gray-500">✏️ You can edit the text above before approving.</p>
@@ -1291,7 +1407,11 @@ LANDING_PAGE = """<!DOCTYPE html>
         const res = await fetch('/api/clean', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: rawText }),
+          body: JSON.stringify({
+            text: rawText,
+            book: document.getElementById('bible-book')?.value || null,
+            chapter: document.getElementById('bible-chapter')?.value || null,
+          }),
         });
 
         if (!res.ok) {
@@ -1369,7 +1489,11 @@ LANDING_PAGE = """<!DOCTYPE html>
         const res = await fetch('/api/generate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: approvedText, section_index: activeSectionIndex }),
+          body: JSON.stringify({
+            text: approvedText,
+            section_index: activeSectionIndex,
+            model: document.querySelector('input[name="kling-model"]:checked')?.value || 'v1.6',
+          }),
         });
 
         if (!res.ok) {
