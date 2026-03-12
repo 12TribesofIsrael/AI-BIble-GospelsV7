@@ -303,9 +303,9 @@ async def api_generate(req: GenerateRequest):
 
     # Model → webhook mapping (published n8n workflows)
     KLING_WEBHOOKS = {
-        "v1.6": "https://bmbautomations.app.n8n.cloud/webhook/0541ecb6-9bd3-4e03-967d-25d80d62ca5a",
-        "v2.1": "https://bmbautomations.app.n8n.cloud/webhook/ee98ef6e-7b3e-4275-b8c8-36cc72354aa8",
-        "v3.0": "https://bmbautomations.app.n8n.cloud/webhook/7bf81240-f351-4f21-a245-dfec108ad086",
+        "v1.6": "https://bmbautomations.app.n8n.cloud/webhook/biblical-v8-kling-v16",
+        "v2.1": "https://bmbautomations.app.n8n.cloud/webhook/biblical-v8-kling-v21",
+        "v3.0": "https://bmbautomations.app.n8n.cloud/webhook/biblical-v8-kling-v30",
     }
 
     N8N_WEBHOOK_URL = KLING_WEBHOOKS.get(req.model)

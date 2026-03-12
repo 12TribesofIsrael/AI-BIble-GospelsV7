@@ -5,6 +5,20 @@ Archive this file when the app reaches full production.
 
 ---
 
+## [2026-03-11] JSON2Video error: "Voice generation failed: No text provided" on Scene 20
+
+**Symptom:** JSON2Video render fails with error: `Scene #20, element #2: Voice generation failed: No text provided`. Video consumed 130 credits but produced no output.
+
+**Root cause:** Perplexity generated only 19 scenes instead of 20. The Build Template Vars code pads to 20 scenes but fills scene 20 with empty strings (`voiceOverText: ""`, `overlaidText: ""`). The JSON2Video template is hardcoded to 20 scenes, each with an ElevenLabs voice element. ElevenLabs rejects empty text.
+
+**Also noticed:** `scene19_videoUrl` and `scene20_videoUrl` were identical (padding reused last scene's URL), confirming scene 20 was a hollow pad.
+
+**Fix:** Added **Step 4b** to Build Template Vars — after text balancing, scans all 20 scenes for empty `voiceOverText`. If found, splits text from the nearest previous scene (at sentence boundary, 50/50 split) to fill the empty scene. Also auto-generates `overlaidText` from first 5 words of the overflow. This ensures every scene sent to JSON2Video has valid voice text.
+
+**File changed:** `n8n/v8.0-kling.json` → Build Template Vars Code node
+
+---
+
 ## [2026-03-10] Last scene loops endlessly — uneven Perplexity text distribution
 
 **Symptom:** Final rendered video gets stuck on the last scene. The 5-second Kling clip loops 10-13x while a massive narration plays. Earlier scenes have 6-20 words while scene 20 has 90-156 words.
