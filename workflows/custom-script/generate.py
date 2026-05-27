@@ -401,12 +401,21 @@ def main():
                         help="LoRA trigger word — prepended to every imagePrompt to activate the LoRA.")
     parser.add_argument("--lora-scale", type=float, default=1.0,
                         help="LoRA strength (default 1.0). Lower if LoRA overpowers the base prompts.")
+    parser.add_argument("--skip-json2video", action="store_true",
+                        help="Stop after Kling; write clips_manifest.json for local FFmpeg assembly "
+                             "(youtubeoptermizer/scripts/assemble-video.py). No JSON2Video_API_KEY needed.")
+    parser.add_argument("--topic", default=None,
+                        help="Topic slug for manifest filename (default: derived from script filename)")
+    parser.add_argument("--manifest-out", default=None,
+                        help="Path to write clips_manifest.json (default: output/<topic>_manifest.json)")
     args = parser.parse_args()
 
     # Validate env
     required = {"ANTHROPIC_API_KEY": ANTHROPIC_API_KEY}
-    if not args.scenes_only:
+    if not args.scenes_only and not args.skip_json2video:
         required.update({"FAL_KEY": FAL_KEY, "JSON2VIDEO_API_KEY": JSON2VIDEO_API_KEY})
+    elif not args.scenes_only:
+        required.update({"FAL_KEY": FAL_KEY})
     missing = [k for k, v in required.items() if not v]
     if missing:
         print(f"Error: Missing env vars: {', '.join(missing)}")
@@ -454,6 +463,36 @@ def main():
             "video_url": video_url,
         })
         print()
+
+    # --skip-json2video: dump manifest for local FFmpeg assembly and stop here.
+    # The existing JSON2Video path below is untouched when this flag is absent.
+    if args.skip_json2video:
+        topic = args.topic or os.path.basename(args.script_file).rsplit(".", 1)[0]
+        manifest_out = args.manifest_out or os.path.join("output", f"{topic}_manifest.json")
+        os.makedirs(os.path.dirname(os.path.abspath(manifest_out)), exist_ok=True)
+        effective_voice = args.voice_id or VOICE_ID
+        manifest = {
+            "topic": topic,
+            "aspect": "16x9",
+            "voice_id": effective_voice,
+            "voice_speed": VOICE_SPEED,
+            "scenes": [
+                {
+                    "scene_id": f"{i + 1:02d}",
+                    "kling_url": p["video_url"],
+                    "narration_text": p["narration"],
+                    "duration_hint": float(KLING_MODELS.get(args.kling_model, {}).get("duration", 15)),
+                    "prompt": scenes[i].get("imagePrompt", ""),
+                    "motion": scenes[i].get("motion", ""),
+                }
+                for i, p in enumerate(processed)
+            ],
+        }
+        with open(manifest_out, "w") as f:
+            json.dump(manifest, f, indent=2)
+        print(f"\nManifest written: {manifest_out}")
+        print(f"Next: python youtubeoptermizer/scripts/assemble-video.py --manifest {manifest_out}")
+        return manifest_out
 
     # Build and submit JSON2Video payload
     payload = build_json2video_payload(processed, voice_id=args.voice_id)
