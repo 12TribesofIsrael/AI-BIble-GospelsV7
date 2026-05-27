@@ -17,6 +17,7 @@ image = (
         "requests>=2.31.0",
         "slowapi>=0.1.9",
         "supabase>=2.8.0",
+        "stripe>=7.0.0",
     )
     .add_local_dir(
         "workflows/biblical-cinematic/server",

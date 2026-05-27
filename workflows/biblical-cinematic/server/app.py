@@ -66,7 +66,7 @@ if _AUTH_USER and _AUTH_PASS:
     # Public surfaces — marketing landing + its static assets — must be
     # reachable without Basic Auth so cold visitors see the value prop.
     _PUBLIC_PATHS = {"/", "/favicon.ico", "/robots.txt"}
-    _PUBLIC_PREFIXES = ("/landing/",)
+    _PUBLIC_PREFIXES = ("/landing/", "/billing/")
 
     class BasicAuthMiddleware(BaseHTTPMiddleware):
         async def dispatch(self, request, call_next):
@@ -2699,6 +2699,7 @@ _YOUTUBE_CHANNEL_URL = "https://www.youtube.com/@AIBibleGospels"
 _ANOINTED_BASE_URL = "https://anointed.app"
 _STRIPE_LINK_25 = os.getenv("STRIPE_LINK_25", "")  # 1 paid chapter
 _STRIPE_LINK_50 = os.getenv("STRIPE_LINK_50", "")  # 3 paid chapters (bundle)
+_STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
@@ -3043,6 +3044,44 @@ async def admin_send_done(token: str, req: RenderDoneRequest):
 async def admin_usage():
     """Usage stats. Already behind Basic Auth middleware when APP_USERNAME/PASSWORD set."""
     return get_summary()
+
+
+# ── Stripe billing ────────────────────────────────────────────────────────────
+
+# Amount-to-credits map (Stripe sends cents).
+_STRIPE_CREDITS = {2500: 1, 5000: 3}
+
+@app.post("/billing/webhook")
+async def stripe_webhook(request: Request):
+    """Stripe webhook — no auth needed (signature verified via STRIPE_WEBHOOK_SECRET).
+    Handles checkout.session.completed → adds paid_credits to the waitlist row."""
+    payload = await request.body()
+    sig = request.headers.get("stripe-signature", "")
+
+    if not _STRIPE_WEBHOOK_SECRET:
+        print("[stripe] STRIPE_WEBHOOK_SECRET not configured — ignoring webhook")
+        return {"status": "unconfigured"}
+
+    try:
+        import stripe as _stripe
+        event = _stripe.Webhook.construct_event(payload, sig, _STRIPE_WEBHOOK_SECRET)
+    except Exception as e:
+        print(f"[stripe] Signature verification failed: {e}")
+        raise HTTPException(status_code=400, detail="Invalid signature")
+
+    if event["type"] == "checkout.session.completed":
+        session = event["data"]["object"]
+        email = ((session.get("customer_details") or {}).get("email") or "").lower().strip()
+        amount = session.get("amount_total", 0)  # cents
+        credits = _STRIPE_CREDITS.get(amount, 1)
+
+        if not email:
+            print(f"[stripe] checkout.session.completed — no email, session={session.get('id')}")
+        else:
+            ok = _db_mod.add_paid_credits(email, credits)
+            print(f"[stripe] +{credits} credit(s) for {email} (${amount//100}) → ok={ok}")
+
+    return {"status": "ok"}
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────
