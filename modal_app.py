@@ -43,6 +43,29 @@ image = (
 
 @app.function(
     image=image,
+    secrets=[modal.Secret.from_name("ai-bible-gospels")],
+    schedule=modal.Period(days=5),
+)
+def supabase_keepalive():
+    """Ping Supabase every 5 days so the free-tier project never auto-pauses."""
+    import os
+    from supabase import create_client
+
+    url = os.environ.get("SUPABASE_URL")
+    key = os.environ.get("SUPABASE_SECRET_KEY")
+    if not url or not key:
+        print("[keepalive] Supabase not configured — skipping")
+        return
+    try:
+        client = create_client(url, key)
+        resp = client.table("waitlist").select("count", count="exact").limit(0).execute()
+        print(f"[keepalive] OK — waitlist rows={resp.count}")
+    except Exception as e:
+        print(f"[keepalive] FAILED: {e}")
+
+
+@app.function(
+    image=image,
     secrets=[
         modal.Secret.from_name("ai-bible-gospels"),
         modal.Secret.from_name("ai-bible-gospels-stripe"),
