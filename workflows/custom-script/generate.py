@@ -29,7 +29,21 @@ JSON2VIDEO_API_KEY = os.getenv("JSON2VIDEO_API_KEY")
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 
 FLUX_URL = "https://fal.run/fal-ai/flux-pro"
-KLING_URL = "https://fal.run/fal-ai/kling-video/v3/standard/image-to-video"
+# When a LoRA URL is passed via --lora-url, FLUX requests route to the LoRA-
+# enabled endpoint (uses FLUX.1-dev base + custom LoRA weights). Slight base-
+# quality drop vs flux-pro, but the trained LoRA dominates the aesthetic so
+# the practical difference is minimal — and it's the only fal endpoint that
+# actually accepts user-trained LoRA weights.
+FLUX_LORA_URL = "https://fal.run/fal-ai/flux-lora"
+KLING_URL = "https://fal.run/fal-ai/kling-video/v3/standard/image-to-video"  # legacy default — superseded by KLING_MODELS
+KLING_MODELS = {
+    "v1.6":     {"url": "https://fal.run/fal-ai/kling-video/v1.6/standard/image-to-video", "duration": "10"},
+    "v2.1":     {"url": "https://fal.run/fal-ai/kling-video/v2.1/standard/image-to-video", "duration": "10"},
+    "v3.0":     {"url": "https://fal.run/fal-ai/kling-video/v3/standard/image-to-video",   "duration": "15"},
+    "v3.0-pro": {"url": "https://fal.run/fal-ai/kling-video/v3/pro/image-to-video",        "duration": "15"},
+    "o3":       {"url": "https://fal.run/fal-ai/kling-video/o3/standard/image-to-video",   "duration": "15"},
+    "o3-pro":   {"url": "https://fal.run/fal-ai/kling-video/o3/pro/image-to-video",        "duration": "15"},
+}
 JSON2VIDEO_URL = "https://api.json2video.com/v2/movies"
 ANTHROPIC_URL = "https://api.anthropic.com/v1/messages"
 
@@ -131,44 +145,115 @@ def fal_headers():
     }
 
 
-def generate_image(scene, index, total):
-    """Generate a FLUX image for a scene."""
+def generate_image(scene, index, total, lora_url=None, lora_trigger=None, lora_scale=1.0):
+    """Generate a FLUX image for a scene.
+
+    lora_url: optional URL to a trained LoRA. When provided, routes the
+    request to the LoRA-enabled FLUX endpoint and prepends lora_trigger
+    to the prompt.
+
+    Retries on ConnectionError / Timeout / 5xx. Does NOT retry on 4xx
+    (403, 401, 429) — those are credit / auth / rate-limit issues that
+    won't fix themselves and should surface immediately.
+    """
     prompt = scene["imagePrompt"]
     if scene.get("lighting"):
         prompt += f", {scene['lighting']}"
+    if lora_url and lora_trigger:
+        # Prepend the trigger so the LoRA activates. The trigger is a single
+        # rare token that biases the model toward the trained look.
+        prompt = f"{lora_trigger} {prompt}"
 
-    print(f"  [{index}/{total}] Generating FLUX image...")
-    resp = requests.post(
-        FLUX_URL,
-        headers=fal_headers(),
-        json={
+    if lora_url:
+        endpoint = FLUX_LORA_URL
+        payload = {
             "prompt": prompt,
             "image_size": "landscape_16_9",
             "num_inference_steps": 28,
             "num_images": 1,
-        },
-        timeout=120,
-    )
-    resp.raise_for_status()
+            "loras": [{"path": lora_url, "scale": lora_scale}],
+        }
+    else:
+        endpoint = FLUX_URL
+        payload = {
+            "prompt": prompt,
+            "image_size": "landscape_16_9",
+            "num_inference_steps": 28,
+            "num_images": 1,
+        }
+
+    backoff_seconds = [15, 45, 90]
+    for attempt, sleep_before_retry in enumerate(backoff_seconds + [None], start=1):
+        try:
+            print(f"  [{index}/{total}] Generating FLUX image (attempt {attempt})...")
+            resp = requests.post(endpoint, headers=fal_headers(), json=payload, timeout=120)
+            resp.raise_for_status()
+            break
+        except (requests.exceptions.ConnectionError,
+                requests.exceptions.Timeout,
+                requests.exceptions.ChunkedEncodingError) as e:
+            if sleep_before_retry is None:
+                print(f"  [{index}/{total}] FLUX network failure after {attempt} attempts: {e}")
+                raise
+            print(f"  [{index}/{total}] Network error: {type(e).__name__} — retry in {sleep_before_retry}s")
+            time.sleep(sleep_before_retry)
+        except requests.exceptions.HTTPError as e:
+            status = e.response.status_code if e.response is not None else 0
+            # 4xx → fail fast (credit / auth / rate-limit need user intervention)
+            if 400 <= status < 500:
+                print(f"  [{index}/{total}] FLUX returned {status} — not retrying (likely billing/auth/rate-limit)")
+                raise
+            # 5xx → retry
+            if sleep_before_retry is None:
+                print(f"  [{index}/{total}] FLUX 5xx after {attempt} attempts: {status}")
+                raise
+            print(f"  [{index}/{total}] FLUX {status} server error — retry in {sleep_before_retry}s")
+            time.sleep(sleep_before_retry)
+
     url = resp.json()["images"][0]["url"]
     print(f"  [{index}/{total}] Image ready: {url[:80]}...")
     return url
 
 
-def generate_video(image_url, scene, index, total):
-    """Generate a Kling video from a FLUX image."""
-    print(f"  [{index}/{total}] Generating Kling video...")
-    resp = requests.post(
-        KLING_URL,
-        headers=fal_headers(),
-        json={
-            "image_url": image_url,
-            "prompt": scene.get("motion", "Slow cinematic camera movement"),
-            "duration": "15",
-            "cfg_scale": 0.5,
-        },
-        timeout=600,
-    )
+def generate_video(image_url, scene, index, total, kling_model="v3.0"):
+    """Generate a Kling video from a FLUX image.
+
+    kling_model: one of KLING_MODELS keys (default v3.0, the legacy CLI default).
+
+    Retries on ConnectionError / Timeout (fal.ai TCP connections frequently
+    reset during long o3-pro renders). 3 attempts with exponential backoff:
+    30s, 90s, 180s. Per-attempt timeout is 1800s to accommodate o3-pro.
+    """
+    model_cfg = KLING_MODELS.get(kling_model, KLING_MODELS["v3.0"])
+    payload = {
+        "image_url": image_url,
+        "prompt": scene.get("motion", "Slow cinematic camera movement"),
+        "duration": model_cfg["duration"],
+        "cfg_scale": 0.5,
+    }
+
+    backoff_seconds = [30, 90, 180]
+    last_err = None
+    for attempt, sleep_before_retry in enumerate(backoff_seconds + [None], start=1):
+        try:
+            print(f"  [{index}/{total}] Generating Kling {kling_model} video (attempt {attempt})...")
+            resp = requests.post(
+                model_cfg["url"],
+                headers=fal_headers(),
+                json=payload,
+                timeout=1800,
+            )
+            resp.raise_for_status()
+            break  # success — exit retry loop
+        except (requests.exceptions.ConnectionError,
+                requests.exceptions.Timeout,
+                requests.exceptions.ChunkedEncodingError) as e:
+            last_err = e
+            if sleep_before_retry is None:
+                print(f"  [{index}/{total}] Kling failed after {attempt} attempts: {e}")
+                raise
+            print(f"  [{index}/{total}] Network error: {type(e).__name__} — sleeping {sleep_before_retry}s before retry")
+            time.sleep(sleep_before_retry)
     resp.raise_for_status()
     data = resp.json()
     url = data.get("video", {}).get("url") or data["data"]["video"]["url"]
@@ -176,8 +261,13 @@ def generate_video(image_url, scene, index, total):
     return url
 
 
-def build_json2video_payload(scenes_data):
-    """Build a JSON2Video project payload dynamically for N scenes."""
+def build_json2video_payload(scenes_data, voice_id=None):
+    """Build a JSON2Video project payload dynamically for N scenes.
+
+    voice_id (optional): override the module-level VOICE_ID. If None, falls
+    back to the module constant so existing callers see no behavior change.
+    """
+    effective_voice = voice_id or VOICE_ID
     subtitle_settings = {
         "style": "classic",
         "font-family": "Oswald Bold",
@@ -211,7 +301,7 @@ def build_json2video_payload(scenes_data):
                     "id": f"scene{i}_voice",
                     "type": "voice",
                     "text": s["narration"],
-                    "voice": VOICE_ID,
+                    "voice": effective_voice,
                     "model": "elevenlabs",
                     "speed": VOICE_SPEED,
                 },
@@ -301,6 +391,16 @@ def main():
     parser.add_argument("script_file", help="Path to script text file (or .json for pre-built scenes)")
     parser.add_argument("--post-produce", action="store_true", help="Run post-production (intro/outro/logo)")
     parser.add_argument("--scenes-only", action="store_true", help="Only generate scenes JSON, skip video production")
+    parser.add_argument("--voice-id", default=None, help="ElevenLabs voice ID override (default: module-level VOICE_ID constant)")
+    parser.add_argument("--kling-model", default="v3.0", choices=list(KLING_MODELS.keys()),
+                        help="Kling model variant (default v3.0). Cost/quality varies by model.")
+    parser.add_argument("--lora-url", default=None,
+                        help="Trained FLUX LoRA URL (from scripts/train-flux-lora.py output). "
+                             "When set, routes FLUX to the LoRA-enabled endpoint.")
+    parser.add_argument("--lora-trigger", default=None,
+                        help="LoRA trigger word — prepended to every imagePrompt to activate the LoRA.")
+    parser.add_argument("--lora-scale", type=float, default=1.0,
+                        help="LoRA strength (default 1.0). Lower if LoRA overpowers the base prompts.")
     args = parser.parse_args()
 
     # Validate env
@@ -344,8 +444,11 @@ def main():
     processed = []
     for i, scene in enumerate(scenes, 1):
         print(f"--- Scene {i}/{total} ---")
-        image_url = generate_image(scene, i, total)
-        video_url = generate_video(image_url, scene, i, total)
+        image_url = generate_image(scene, i, total,
+                                    lora_url=args.lora_url,
+                                    lora_trigger=args.lora_trigger,
+                                    lora_scale=args.lora_scale)
+        video_url = generate_video(image_url, scene, i, total, kling_model=args.kling_model)
         processed.append({
             "narration": scene["narration"],
             "video_url": video_url,
@@ -353,7 +456,7 @@ def main():
         print()
 
     # Build and submit JSON2Video payload
-    payload = build_json2video_payload(processed)
+    payload = build_json2video_payload(processed, voice_id=args.voice_id)
     project_id = submit_json2video(payload)
     mp4_url = poll_json2video(project_id)
 
