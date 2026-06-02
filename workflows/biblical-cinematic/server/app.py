@@ -2629,7 +2629,7 @@ _LANDING_HTML_PATH = _LANDING_DIR / "index.html"
 _INVITE_HTML_PATH  = _LANDING_DIR / "invite.html"
 _ADMIN_HTML_PATH   = _LANDING_DIR / "admin.html"
 _LANDING_ASSET_WHITELIST = {
-    "hero-loop.mp4", "sample-1.mp4", "sample-2.mp4",
+    "hero-loop.mp4", "sample-1.mp4", "sample-2.mp4", "sample-3.mp4", "sample-4.mp4",
     "hero-poster.jpg", "sample-1-poster.jpg", "sample-2-poster.jpg",
 }
 

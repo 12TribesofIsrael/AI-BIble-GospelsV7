@@ -81,11 +81,13 @@
   <!-- ── Hero ── -->
   <section class="relative h-screen min-h-[640px] flex items-center justify-center overflow-hidden">
     <video
+      id="heroVid"
       class="hero-video"
-      autoplay muted loop playsinline preload="auto"
+      autoplay muted playsinline preload="auto"
       poster="/landing/hero-poster.jpg"
+      src="/landing/hero-loop.mp4"
+      type="video/mp4"
       aria-hidden="true">
-      <source src="/landing/hero-loop.mp4" type="video/mp4" />
     </video>
     <div class="hero-overlay"></div>
 
@@ -324,10 +326,26 @@
     }, { threshold: 0.1, rootMargin: '0px 0px -60px 0px' });
     document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
 
-    // Hero video iOS autoplay nudge — some Safari builds need a play() call after metadata loads
-    const heroVid = document.querySelector('.hero-video');
+    // Hero video playlist — cycle through videos
+    const heroVid = document.getElementById('heroVid');
+    const videoPlaylist = [
+      '/landing/hero-loop.mp4',
+      '/landing/sample-1.mp4',
+      '/landing/sample-2.mp4',
+      '/landing/sample-3.mp4',
+      '/landing/sample-4.mp4'
+    ];
+    let currentVideoIdx = 0;
+
     if (heroVid) {
       heroVid.addEventListener('loadedmetadata', () => {
+        heroVid.play().catch(() => {});
+      });
+
+      heroVid.addEventListener('ended', () => {
+        currentVideoIdx = (currentVideoIdx + 1) % videoPlaylist.length;
+        heroVid.src = videoPlaylist[currentVideoIdx];
+        heroVid.load();
         heroVid.play().catch(() => {});
       });
     }
