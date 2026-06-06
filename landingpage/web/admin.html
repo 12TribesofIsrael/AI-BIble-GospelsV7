@@ -171,6 +171,13 @@
             </button>`;
         }
 
+        // Delete is available on every row (cleanup of test rows / bad signups).
+        actions += `
+          <button data-action="delete" data-email="${escapeHtml(r.email)}"
+            class="ml-3 border border-gray-800 hover:border-red-700 text-gray-500 hover:text-red-400 px-3 py-1.5 rounded-lg text-xs transition">
+            Delete
+          </button>`;
+
         return `
           <tr class="text-sm">
             <td class="px-4 py-3 font-medium text-gray-100">${escapeHtml(r.email)}</td>
@@ -221,6 +228,30 @@
         document.querySelectorAll('button[data-action="senddone"]').forEach((btn) => {
           btn.addEventListener('click', () => openModal(btn.dataset.token, btn.dataset.email, btn.dataset.chapter));
         });
+        document.querySelectorAll('button[data-action="delete"]').forEach((btn) => {
+          btn.addEventListener('click', () => deleteRow(btn.dataset.email, btn));
+        });
+      }
+
+      async function deleteRow(email, btn) {
+        if (!window.confirm(`Delete waitlist row for ${email}? This cannot be undone.`)) return;
+        const original = btn.innerText;
+        btn.disabled = true;
+        btn.innerText = 'Deleting…';
+        try {
+          const r = await fetch(`/admin/waitlist/${encodeURIComponent(email)}`, { method: 'DELETE' });
+          const data = await r.json().catch(() => ({}));
+          if (!r.ok) {
+            btn.innerText = `❌ ${data.detail || 'Failed'}`;
+            setTimeout(() => { btn.innerText = original; btn.disabled = false; }, 3000);
+            return;
+          }
+          btn.innerText = '✓ Deleted';
+          setTimeout(load, 600);
+        } catch (e) {
+          btn.innerText = '❌ Network';
+          setTimeout(() => { btn.innerText = original; btn.disabled = false; }, 3000);
+        }
       }
 
       async function issueInvite(email, btn) {

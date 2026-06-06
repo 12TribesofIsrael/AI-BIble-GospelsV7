@@ -118,6 +118,28 @@ def list_waitlist(limit: int = 500) -> Optional[list]:
         return None
 
 
+def delete_waitlist(email: str) -> Optional[int]:
+    """Delete the waitlist row(s) matching email. Returns the number of rows
+    deleted (0 if none matched), or None if Supabase is not configured / errored.
+
+    Used by the admin panel's per-row Delete button to clean up test rows and
+    bad signups.
+    """
+    client = _get_client()
+    if client is None:
+        return None
+    try:
+        normalized = email.lower().strip()
+        resp = (client.table("waitlist")
+                .delete()
+                .eq("email", normalized)
+                .execute())
+        return len(resp.data or [])
+    except Exception as e:
+        print(f"[db] delete_waitlist failed: {e}")
+        return None
+
+
 def issue_invite(email: str) -> Optional[str]:
     """Generate a one-time invite_token for the waitlist row matching email.
 

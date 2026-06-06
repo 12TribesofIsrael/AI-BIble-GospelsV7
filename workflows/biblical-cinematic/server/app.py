@@ -2161,6 +2161,26 @@ async def admin_waitlist():
     return {"configured": True, "count": len(rows), "signups": rows}
 
 
+@app.delete("/admin/waitlist/{email}")
+async def admin_delete_waitlist(email: str):
+    """Delete a waitlist row by email. Gated by Basic Auth middleware.
+
+    Used by the admin panel's per-row Delete button to remove test rows and
+    bad signups. Returns 404 if no row matched.
+    """
+    if not _db_mod.is_enabled():
+        raise HTTPException(status_code=503, detail="Supabase not configured")
+    normalized = email.strip().lower()
+    if not _EMAIL_RE.match(normalized) or len(normalized) > 254:
+        raise HTTPException(status_code=400, detail="Invalid email")
+    deleted = _db_mod.delete_waitlist(normalized)
+    if deleted is None:
+        raise HTTPException(status_code=500, detail="Delete failed — see server logs")
+    if deleted == 0:
+        raise HTTPException(status_code=404, detail=f"No waitlist row for {normalized}")
+    return {"status": "deleted", "email": normalized, "rows": deleted}
+
+
 @app.post("/admin/invites/issue")
 async def admin_issue_invite(req: InviteIssueRequest):
     """Issue (or re-fetch) a one-time invite token for an existing waitlist row
