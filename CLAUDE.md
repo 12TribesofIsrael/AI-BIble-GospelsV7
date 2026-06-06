@@ -121,8 +121,8 @@ python app.py
 10. Use **Fix Scenes** panel: check multiple scenes, edit prompts inline, regenerate all with ONE render
 11. Download the raw MP4 when done (auto-split into Part 1/Part 2 for long chapters)
 12. Browse **Render History** panel to view past renders or reload scenes into the fix panel
-13. Scroll to **Step 4 — Post-Production** → click **↺ Refresh** → click **▶ Start Rendering**
-14. Progress bar tracks normalize → concat → logo overlay → **Download Final Video**
+
+> **Post-production (intro/outro/logo) and YouTube upload are no longer in the web app** — they were removed when the app went public (2026-06-06). Run them from the CLI / skills instead (see Post-Production and YouTube Upload sections below).
 
 ### n8n setup notes
 - The n8n workflow must be **Published/Active** for the production webhook to fire
@@ -156,7 +156,7 @@ for item in items:
 |---|---|
 | [workflows/biblical-cinematic/README.md](workflows/biblical-cinematic/README.md) | Complete setup guide |
 | [workflows/biblical-cinematic/ERRORS.md](workflows/biblical-cinematic/ERRORS.md) | Running log of bugs and root-cause fixes — check before debugging |
-| [workflows/biblical-cinematic/server/app.py](workflows/biblical-cinematic/server/app.py) | FastAPI server — `/api/clean`, `/api/render/*` (Step 4), `/api/upload/*` (Step 5), mounts v9 router at `/v9` + custom router at `/custom` |
+| [workflows/biblical-cinematic/server/app.py](workflows/biblical-cinematic/server/app.py) | FastAPI server — `/api/clean`, `/admin/*`, `/billing/*`, mounts v9 router at `/v9` + custom router at `/custom`. App is PUBLIC; only `/admin/*` is gated by the fail-closed Basic Auth middleware. (Web Step 4/5 post-prod + YouTube endpoints removed 2026-06-06 — now CLI/skill-only.) |
 | [workflows/biblical-cinematic/server/biblical_pipeline.py](workflows/biblical-cinematic/server/biblical_pipeline.py) | v13 pipeline router — `/v9/api/generate-scenes`, `/v9/api/generate-video`, `/v9/api/status`, `/v9/api/retry`, `/v9/api/fix-scene`, `/v9/api/fix-scenes`, `/v9/api/stop`, `/v9/api/history` (no n8n). Houses `ASPECT_RATIOS` dict — single source of truth for canonical ratio → FLUX `image_size` / Kling `aspect_ratio` / JSON2Video `resolution` / subtitle overrides |
 | [workflows/biblical-cinematic/server/rate_limit.py](workflows/biblical-cinematic/server/rate_limit.py) | Shared `slowapi` Limiter — 5/hour on render endpoints, 30/hour on Claude-only endpoints. IP from `X-Forwarded-For` (Modal proxy). Imported by app.py, biblical_pipeline.py, custom-script/router.py |
 | [workflows/biblical-cinematic/server/usage.py](workflows/biblical-cinematic/server/usage.py) | Usage tracking — one event per money-spending API hit. Dual-writes to `/data/usage_log.json` (fallback) and Supabase `usage_events` table. Read via `GET /admin/usage`. |
@@ -174,10 +174,9 @@ for item in items:
 | [workflows/biblical-cinematic/scripts/upload_youtube.py](workflows/biblical-cinematic/scripts/upload_youtube.py) | YouTube uploader — OAuth2, auto-generates title/description/thumbnail, uploads as unlisted |
 | [workflows/biblical-cinematic/assets/](workflows/biblical-cinematic/assets/) | Drop-in folder for logo.png, intro.mp4, outro.mp4, music/ |
 
-### Post-Production (Step 4 in web app — preferred)
-Drop raw MP4 into `output/raw/`, then use the **Step 4** panel at http://localhost:8000 — click ↺ Refresh, then ▶ Start Rendering. Progress bar tracks all FFmpeg stages. Download button appears when done.
+### Post-Production (CLI / `add-covers` skill)
+> The web-app **Step 4** panel was removed on 2026-06-06 when the app went public (it needs local FFmpeg + filesystem access, which don't exist on Modal). Run it locally from the CLI or the `add-covers` skill instead.
 
-**CLI fallback (terminal):**
 ```bash
 # Single video:
 python workflows/biblical-cinematic/scripts/post_produce.py output/raw/video.mp4
@@ -187,10 +186,12 @@ python workflows/biblical-cinematic/scripts/batch_post_produce.py
 ```
 Options: `--width 3840` (for 4K, default 1920)
 
-### YouTube Upload (Step 5 in web app — preferred)
-Select a final video from the **Step 5** panel at http://localhost:8000, enter the scripture reference (e.g. "Genesis 1"), click **Upload to YouTube**. Progress bar tracks upload + thumbnail. Done panel shows YouTube URL + Studio edit link.
+### YouTube Upload (CLI / `movie-director` skill)
+> The web-app **Step 5** panel was removed on 2026-06-06 when the app went public. Run it locally from the CLI or the `movie-director` skill instead.
 
-**CLI fallback (terminal):**
+```bash
+python workflows/biblical-cinematic/scripts/upload_youtube.py output/video_final.mp4 "Genesis 1"
+```
 ```bash
 python workflows/biblical-cinematic/scripts/upload_youtube.py output/video_final.mp4 "Genesis 1"
 ```
@@ -379,8 +380,8 @@ modal deploy modal_app.py
 | [modal_app.py](modal_app.py) | Modal deployment entry point — mounts project dirs, serves FastAPI via `@modal.asgi_app()` |
 
 ### Notes
-- Auth middleware only activates when `APP_USERNAME` + `APP_PASSWORD` are set (skipped in local dev)
-- Step 4 (post-production) and Step 5 (YouTube upload) are local-only — they require FFmpeg and filesystem access
+- **Auth model (public app):** the app is PUBLIC — only `/admin/*` is gated by Basic Auth. The middleware is **always installed** and **fails closed**: if `APP_USERNAME` + `APP_PASSWORD` aren't set, `/admin/*` returns 401 (it does NOT fall open). Everything else (`/`, `/v9/*`, `/custom/*`, `/api/clean`, `/api/waitlist`, `/billing/*`, `/invite/*`) is public. Changing the secret requires a **redeploy** (middleware reads the env at import time). (Was whole-app Basic Auth until 2026-06-06.)
+- Post-production + YouTube upload are CLI/skill-only (removed from the web app 2026-06-06) — they require local FFmpeg + filesystem access
 - Container stays warm for 5 minutes (`scaledown_window=300`), timeout 30 minutes (`timeout=1800`)
 - Pipeline state persisted to Modal Volume (`ai-bible-gospels-data`) at `/data/pipeline_state.json` — survives container restarts
 - Redeploy updates code but warm containers keep old code — run `modal app stop ai-bible-gospels` before `modal deploy` to force refresh

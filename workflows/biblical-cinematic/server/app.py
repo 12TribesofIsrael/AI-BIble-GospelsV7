@@ -12,7 +12,6 @@ Endpoints:
 """
 
 import os
-import subprocess
 import sys
 from pathlib import Path
 from datetime import datetime, timezone
@@ -33,7 +32,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent / "custom-script"))
 
 import json as json_module
 import re
-import threading
 import httpx
 import uvicorn
 from fastapi import FastAPI, HTTPException, Request
@@ -55,40 +53,46 @@ app = FastAPI(title="Anointed")
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 
-# ── Basic Auth middleware (only when deployed) ────────────────────────────────
+# ── Admin auth middleware ─────────────────────────────────────────────────────
+# The app itself is PUBLIC (anyone can generate videos). Only the /admin/* zone —
+# which exposes waitlist PII, invite tokens, and usage — is gated by Basic Auth.
+# Fail CLOSED: if creds aren't configured, /admin/* returns 401 rather than opening.
 _AUTH_USER = os.getenv("APP_USERNAME")
 _AUTH_PASS = os.getenv("APP_PASSWORD")
 
-if _AUTH_USER and _AUTH_PASS:
-    from starlette.middleware.base import BaseHTTPMiddleware
-    from starlette.responses import Response as StarletteResponse
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import Response as StarletteResponse
 
-    # Public surfaces — marketing landing + its static assets — must be
-    # reachable without Basic Auth so cold visitors see the value prop.
-    _PUBLIC_PATHS = {"/", "/favicon.ico", "/robots.txt"}
-    _PUBLIC_PREFIXES = ("/landing/", "/billing/")
+_PROTECTED_PREFIX = "/admin"
 
-    class BasicAuthMiddleware(BaseHTTPMiddleware):
-        async def dispatch(self, request, call_next):
-            path = request.url.path
-            if path in _PUBLIC_PATHS or any(path.startswith(p) for p in _PUBLIC_PREFIXES):
-                return await call_next(request)
-            auth = request.headers.get("Authorization")
-            if auth and auth.startswith("Basic "):
-                try:
-                    decoded = base64.b64decode(auth[6:]).decode()
-                    user, pwd = decoded.split(":", 1)
-                    if secrets.compare_digest(user, _AUTH_USER) and secrets.compare_digest(pwd, _AUTH_PASS):
-                        return await call_next(request)
-                except Exception:
-                    pass
-            return StarletteResponse(
-                "Unauthorized", status_code=401,
-                headers={"WWW-Authenticate": 'Basic realm="Anointed"'},
-            )
+class AdminAuthMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        path = request.url.path
+        # Everything outside /admin/* is public.
+        if not path.startswith(_PROTECTED_PREFIX):
+            return await call_next(request)
+        # /admin/* — deny if creds aren't configured (fail closed).
+        if not (_AUTH_USER and _AUTH_PASS):
+            return StarletteResponse("Admin auth not configured", status_code=401)
+        auth = request.headers.get("Authorization")
+        if auth and auth.startswith("Basic "):
+            try:
+                decoded = base64.b64decode(auth[6:]).decode()
+                user, pwd = decoded.split(":", 1)
+                if secrets.compare_digest(user, _AUTH_USER) and secrets.compare_digest(pwd, _AUTH_PASS):
+                    return await call_next(request)
+            except Exception:
+                pass
+        return StarletteResponse(
+            "Unauthorized", status_code=401,
+            headers={"WWW-Authenticate": 'Basic realm="Anointed Admin"'},
+        )
 
-    app.add_middleware(BasicAuthMiddleware)
-    print("Basic Auth enabled (public: /, /landing/*, /favicon.ico, /robots.txt)")
+app.add_middleware(AdminAuthMiddleware)
+print(
+    "Admin auth middleware installed — /admin/* requires Basic Auth (fail-closed); "
+    f"creds configured: {bool(_AUTH_USER and _AUTH_PASS)}"
+)
 
 # Mount custom script router
 try:
@@ -150,37 +154,6 @@ if _BIBLE_JSON_PATH.exists():
 else:
     print(f"WARNING: Bible data not found at {_BIBLE_JSON_PATH}")
 
-# ── Post-production paths ──────────────────────────────────────────────────────
-_SCRIPT_DIR   = Path(__file__).parent
-_BIBLICAL_DIR = _SCRIPT_DIR.parent
-_PROJECT_ROOT = _BIBLICAL_DIR.parent.parent   # c:/Users/Tommy/AI Movie
-RAW_DIR       = _PROJECT_ROOT / "output" / "raw"
-OUT_DIR       = _PROJECT_ROOT / "output"
-POST_SCRIPT    = _BIBLICAL_DIR / "scripts" / "post_produce.py"
-UPLOAD_SCRIPT  = _BIBLICAL_DIR / "scripts" / "upload_youtube.py"
-
-# ── Upload state (single-user, in-memory) ─────────────────────────────────────
-upload_state: dict = {
-    "status":     "idle",   # idle | running | done | error
-    "progress":   0,        # 0–100
-    "label":      "",
-    "file":       None,
-    "video_url":  None,
-    "studio_url": None,
-    "error":      None,
-}
-
-# ── Render state (single-user, in-memory) ─────────────────────────────────────
-render_state: dict = {
-    "status":   "idle",   # idle | running | done | error
-    "progress": 0,         # 0–100
-    "label":    "",
-    "file":     None,      # raw filename being processed
-    "output":   None,      # final output filename
-    "error":    None,
-}
-
-
 # ── Request / Response models ─────────────────────────────────────────────────
 
 class CleanRequest(BaseModel):
@@ -211,15 +184,6 @@ class GenerateRequest(BaseModel):
 class GenerateResponse(BaseModel):
     status: str
     message: str
-
-
-class RenderRequest(BaseModel):
-    file: str
-
-
-class UploadRequest(BaseModel):
-    file: str
-    scripture: str
 
 
 class WaitlistRequest(BaseModel):
@@ -609,230 +573,6 @@ async def api_status():
                 "elapsed": elapsed, "realtime": False}
 
 
-# ── Post-production background thread ────────────────────────────────────────
-
-def _run_render(raw_file: Path):
-    """Run post_produce.py as a subprocess; parse stdout to drive render_state."""
-    TOTAL_SEGS = 5  # Into + main video + outro_1/2/3
-
-    try:
-        import os
-        env = os.environ.copy()
-        env["PYTHONUNBUFFERED"] = "1"
-
-        proc = subprocess.Popen(
-            [sys.executable, "-u", str(POST_SCRIPT), str(raw_file)],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            env=env,
-        )
-
-        normalize_count = 0
-        for line in proc.stdout:
-            line = line.strip()
-            if not line:
-                continue
-            print(f"[render] {line}", flush=True)
-            if "Normalizing" in line:
-                normalize_count += 1
-                pct = int(normalize_count / TOTAL_SEGS * 65)
-                render_state["progress"] = pct
-                render_state["label"] = line.lstrip("→ ").strip()
-            elif "Concatenating" in line:
-                render_state["progress"] = 70
-                render_state["label"] = "Concatenating segments..."
-            elif "Overlaying" in line:
-                render_state["progress"] = 85
-                render_state["label"] = "Overlaying logo..."
-            elif "Done!" in line or "✓" in line:
-                render_state["progress"] = 99
-                render_state["label"] = "Finishing up..."
-
-        proc.wait()
-        print(f"[render] process exited with code {proc.returncode}", flush=True)
-
-        if proc.returncode == 0:
-            render_state["status"]   = "done"
-            render_state["progress"] = 100
-            render_state["label"]    = "Done!"
-            render_state["output"]   = raw_file.stem + "_final.mp4"
-        else:
-            render_state["status"] = "error"
-            render_state["error"]  = "FFmpeg post-production failed (see server console for details)."
-
-    except Exception as exc:
-        render_state["status"] = "error"
-        render_state["error"]  = str(exc)
-
-
-# ── YouTube upload background thread ─────────────────────────────────────────
-
-def _run_upload(final_file: Path, scripture: str):
-    """Run upload_youtube.py as a subprocess; parse stdout to drive upload_state."""
-    try:
-        env = os.environ.copy()
-        env["PYTHONUNBUFFERED"] = "1"
-
-        proc = subprocess.Popen(
-            [sys.executable, "-u", str(UPLOAD_SCRIPT), str(final_file), scripture],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            env=env,
-        )
-
-        for line in proc.stdout:
-            line = line.strip()
-            if not line:
-                continue
-            print(f"[upload] {line}", flush=True)
-
-            if "Uploading..." in line:
-                m = re.search(r"(\d+)%", line)
-                if m:
-                    pct = int(m.group(1))
-                    upload_state["progress"] = min(int(pct * 0.88), 88)
-                    upload_state["label"] = f"Uploading to YouTube... {pct}%"
-            elif "Generating thumbnail" in line:
-                upload_state["progress"] = 93
-                upload_state["label"] = "Generating thumbnail..."
-            elif "Thumbnail set" in line:
-                upload_state["progress"] = 99
-                upload_state["label"] = "Finalizing..."
-            elif "youtu.be/" in line:
-                m = re.search(r"https://youtu\.be/\S+", line)
-                if m:
-                    upload_state["video_url"] = m.group(0).rstrip(".")
-            elif "studio.youtube.com" in line:
-                m = re.search(r"https://studio\.youtube\.com/\S+", line)
-                if m:
-                    upload_state["studio_url"] = m.group(0).rstrip(".")
-
-        proc.wait()
-
-        if proc.returncode == 0:
-            upload_state["status"]   = "done"
-            upload_state["progress"] = 100
-            upload_state["label"]    = "Done!"
-        else:
-            upload_state["status"] = "error"
-            upload_state["error"]  = "Upload failed — check the server terminal for details."
-
-    except Exception as exc:
-        upload_state["status"] = "error"
-        upload_state["error"]  = str(exc)
-
-
-# ── YouTube upload API endpoints ──────────────────────────────────────────────
-
-@app.get("/api/upload/check")
-async def upload_check():
-    """Return list of final videos in output/ (not output/raw/)."""
-    if not OUT_DIR.exists():
-        return {"files": [], "count": 0}
-    exts = {".mp4", ".mov", ".mkv"}
-    files = sorted(
-        f.name for f in OUT_DIR.iterdir()
-        if f.is_file() and f.suffix.lower() in exts
-    )
-    return {"files": files, "count": len(files)}
-
-
-@app.post("/api/upload/start")
-async def upload_start(req: UploadRequest):
-    """Validate final file + scripture, then launch upload in a background thread."""
-    if upload_state["status"] == "running":
-        return {"status": "error", "message": "An upload is already in progress."}
-
-    if not req.scripture.strip():
-        return {"status": "error", "message": "Scripture reference is required (e.g. Matthew 10)."}
-
-    safe_name  = Path(req.file).name
-    final_file = OUT_DIR / safe_name
-    if not final_file.exists():
-        return {"status": "error", "message": f"File not found: {safe_name}"}
-
-    upload_state.update({
-        "status":     "running",
-        "progress":   0,
-        "label":      "Starting upload...",
-        "file":       safe_name,
-        "video_url":  None,
-        "studio_url": None,
-        "error":      None,
-    })
-
-    threading.Thread(target=_run_upload, args=(final_file, req.scripture.strip()), daemon=True).start()
-    return {"status": "started"}
-
-
-@app.get("/api/upload/status")
-async def upload_status_ep():
-    """Return current upload_state as JSON."""
-    return upload_state
-
-
-# ── Post-production API endpoints ─────────────────────────────────────────────
-
-@app.get("/api/render/check")
-async def render_check():
-    """Return list of video files found in output/raw/."""
-    if not RAW_DIR.exists():
-        return {"files": [], "count": 0}
-    exts = {".mp4", ".mov", ".mkv", ".webm"}
-    files = sorted(f.name for f in RAW_DIR.iterdir() if f.suffix.lower() in exts)
-    return {"files": files, "count": len(files)}
-
-
-@app.post("/api/render/start")
-@limiter.limit(EXPENSIVE_LIMIT)
-async def render_start(request: Request, req: RenderRequest):
-    """Validate raw file exists, then launch post-production in a background thread."""
-    if render_state["status"] == "running":
-        return {"status": "error", "message": "A render is already in progress."}
-
-    # Strip any path separators to prevent directory traversal
-    safe_name = Path(req.file).name
-    raw_file  = RAW_DIR / safe_name
-
-    if not raw_file.exists():
-        return {"status": "error", "message": f"File not found: {safe_name}"}
-
-    render_state.update({
-        "status":   "running",
-        "progress": 0,
-        "label":    "Starting FFmpeg...",
-        "file":     safe_name,
-        "output":   None,
-        "error":    None,
-    })
-
-    log_event(request, "app_post_production", file=safe_name)
-    threading.Thread(target=_run_render, args=(raw_file,), daemon=True).start()
-    return {"status": "started"}
-
-
-@app.get("/api/render/status")
-async def render_status_ep():
-    """Return current render_state as JSON."""
-    return render_state
-
-
-@app.get("/api/render/download/{filename}")
-async def render_download(filename: str):
-    """Serve a final rendered video from output/ for browser download."""
-    safe_name = Path(filename).name          # strip any path components
-    file_path = OUT_DIR / safe_name
-    if not file_path.exists():
-        return JSONResponse({"error": "File not found"}, status_code=404)
-    return FileResponse(
-        file_path,
-        media_type="video/mp4",
-        headers={"Content-Disposition": f'attachment; filename="{safe_name}"'},
-    )
-
-
 # ── Landing Page ──────────────────────────────────────────────────────────────
 
 LANDING_PAGE = """<!DOCTYPE html>
@@ -873,10 +613,6 @@ LANDING_PAGE = """<!DOCTYPE html>
       <a href="/app" class="nav-tab active px-5 py-4 text-sm font-medium">Scripture Mode</a>
       <a href="/custom" class="nav-tab px-5 py-4 text-sm text-gray-400 font-medium">Custom Script Mode</a>
       <div class="ml-auto flex items-center gap-4 pr-4">
-        <a href="#step4" onclick="document.getElementById('step4').scrollIntoView({behavior:'smooth'}); return false;"
-          class="text-xs text-purple-400 hover:text-purple-300 border border-purple-800 hover:border-purple-600 px-3 py-1.5 rounded-lg transition-colors">
-          ▼ Post-Production
-        </a>
         <span class="text-xs text-gray-600">Anointed · v13</span>
       </div>
     </div>
@@ -1237,10 +973,10 @@ LANDING_PAGE = """<!DOCTYPE html>
       </div>
     </div>
 
-    <!-- Step 4 divider -->
+    <!-- History divider -->
     <div class="flex items-center gap-4 mt-12 mb-6">
       <div class="flex-1 h-px bg-gray-800"></div>
-      <span class="text-xs text-gray-600 font-semibold tracking-widest uppercase">Post-Production</span>
+      <span class="text-xs text-gray-600 font-semibold tracking-widest uppercase">History</span>
       <div class="flex-1 h-px bg-gray-800"></div>
     </div>
 
@@ -1263,201 +999,6 @@ LANDING_PAGE = """<!DOCTYPE html>
         <div id="history-list" class="space-y-2 max-h-96 overflow-y-auto">
           <p class="text-xs text-gray-600">Click ↺ to load history</p>
         </div>
-      </div>
-    </div>
-
-    <!-- ── STEP 4: Post-Production ── -->
-    <div id="step4">
-      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6">
-
-        <!-- Header row -->
-        <div class="flex items-start justify-between mb-5">
-          <div class="flex items-start gap-3">
-            <div class="w-7 h-7 rounded-full bg-purple-600 text-white font-bold flex items-center justify-center text-xs flex-shrink-0 mt-0.5">4</div>
-            <div>
-              <h3 class="text-base font-semibold text-white">Post-Production</h3>
-              <p class="text-sm text-gray-400 mt-0.5">Add intro, outros &amp; logo to your downloaded raw video.</p>
-            </div>
-          </div>
-          <!-- File status badge + refresh -->
-          <div class="flex items-center gap-2 flex-shrink-0">
-            <div id="raw-file-badge" class="text-xs px-3 py-1 rounded-full bg-gray-800 text-gray-500">
-              ○ Checking...
-            </div>
-            <button onclick="checkRawFiles()" title="Refresh"
-              class="text-xs text-gray-500 hover:text-gray-200 border border-gray-700 hover:border-gray-500 px-2.5 py-1 rounded-lg transition-colors">
-              ↺
-            </button>
-          </div>
-        </div>
-
-        <!-- Where to put the file (helper text) -->
-        <p id="raw-hint" class="text-xs text-gray-600 mb-4">
-          Drop your downloaded raw MP4 into <code class="text-gray-400">output/raw/</code> then click ↺ to refresh.
-        </p>
-
-        <!-- File selector (shown when >1 file found) -->
-        <div id="file-selector-wrap" class="mb-4 hidden">
-          <label class="text-xs text-gray-500 mb-1 block">Select raw video to render</label>
-          <select id="file-selector"
-            class="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-purple-500">
-          </select>
-        </div>
-
-        <!-- Start button + error -->
-        <div class="flex items-center gap-3 mb-5">
-          <button id="render-btn" onclick="startRender()" disabled
-            class="bg-purple-600 hover:bg-purple-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold px-6 py-2.5 rounded-xl transition-colors duration-200 flex items-center gap-2">
-            <span id="render-btn-text">▶ Start Rendering</span>
-          </button>
-          <span id="render-error" class="text-red-400 text-sm hidden"></span>
-        </div>
-
-        <!-- Progress section (hidden until render starts) -->
-        <div id="render-progress-wrap" class="hidden">
-          <div class="flex justify-between text-xs text-gray-500 mb-1">
-            <span id="render-stage-label">Preparing...</span>
-            <span id="render-percent">0%</span>
-          </div>
-          <div class="w-full bg-gray-800 rounded-full h-3 overflow-hidden mb-4">
-            <div id="render-bar"
-              class="h-3 rounded-full transition-all duration-700 ease-linear"
-              style="width:0%; background: linear-gradient(90deg,#7c3aed,#a855f7);">
-            </div>
-          </div>
-          <!-- Stage steps -->
-          <div class="bg-gray-800 rounded-xl p-4 space-y-2.5 text-sm">
-            <div id="rstep-normalize" class="flex items-center gap-2 text-gray-400">
-              <span id="ricon-normalize" class="text-gray-600">○</span> Normalizing segments (fps · audio · pixel format)
-            </div>
-            <div id="rstep-concat" class="flex items-center gap-2 text-gray-400">
-              <span id="ricon-concat" class="text-gray-600">○</span> Concatenating: intro → video → outro 1 → 2 → 3
-            </div>
-            <div id="rstep-logo" class="flex items-center gap-2 text-gray-400">
-              <span id="ricon-logo" class="text-gray-600">○</span> Overlaying logo watermark
-            </div>
-          </div>
-        </div>
-
-        <!-- Download panel (shown when done) -->
-        <div id="render-done-panel" class="hidden mt-4">
-          <div class="bg-purple-900/30 border border-purple-700 rounded-xl p-5">
-            <p class="text-purple-300 font-semibold mb-3">🎉 Post-production complete!</p>
-            <a id="render-download-link" href="#"
-              class="block w-full bg-purple-600 hover:bg-purple-500 text-white font-semibold py-3 rounded-xl transition-colors text-center">
-              ⬇ Download Final Video
-            </a>
-          </div>
-        </div>
-
-      </div>
-    </div>
-
-    <!-- Step 5 divider -->
-    <div class="flex items-center gap-4 mt-8 mb-6">
-      <div class="flex-1 h-px bg-gray-800"></div>
-      <span class="text-xs text-gray-600 font-semibold tracking-widest uppercase">YouTube Upload</span>
-      <div class="flex-1 h-px bg-gray-800"></div>
-    </div>
-
-    <!-- ── STEP 5: YouTube Upload ── -->
-    <div id="step5">
-      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6">
-
-        <!-- Header row -->
-        <div class="flex items-start justify-between mb-5">
-          <div class="flex items-start gap-3">
-            <div class="w-7 h-7 rounded-full bg-red-700 text-white font-bold flex items-center justify-center text-xs flex-shrink-0 mt-0.5">5</div>
-            <div>
-              <h3 class="text-base font-semibold text-white">Upload to YouTube</h3>
-              <p class="text-sm text-gray-400 mt-0.5">Upload your final video as an unlisted draft — publish from YouTube Studio when ready.</p>
-            </div>
-          </div>
-          <div class="flex items-center gap-2 flex-shrink-0">
-            <div id="final-file-badge" class="text-xs px-3 py-1 rounded-full bg-gray-800 text-gray-500">
-              ○ Checking...
-            </div>
-            <button onclick="checkFinalFiles()" title="Refresh"
-              class="text-xs text-gray-500 hover:text-gray-200 border border-gray-700 hover:border-gray-500 px-2.5 py-1 rounded-lg transition-colors">
-              ↺
-            </button>
-          </div>
-        </div>
-
-        <!-- Helper text (shown when no files) -->
-        <p id="final-hint" class="text-xs text-gray-600 mb-4 hidden">
-          No final videos found in <code class="text-gray-400">output/</code>. Run post-production (Step 4) first.
-        </p>
-
-        <!-- File selector -->
-        <div id="upload-file-selector-wrap" class="mb-4 hidden">
-          <label class="text-xs text-gray-500 mb-1 block">Select final video to upload</label>
-          <select id="upload-file-selector"
-            class="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-gray-100 focus:outline-none focus:border-red-500">
-          </select>
-        </div>
-
-        <!-- Scripture reference input -->
-        <div class="mb-5">
-          <label class="text-xs text-gray-500 mb-1 block">Scripture reference <span class="text-gray-600">(used for title, tags &amp; thumbnail)</span></label>
-          <input
-            id="upload-scripture"
-            type="text"
-            placeholder='e.g. Matthew 10  or  1 Kings 3'
-            class="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-gray-100 placeholder-gray-600 focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500"
-          />
-        </div>
-
-        <!-- Upload button + error -->
-        <div class="flex items-center gap-3 mb-5">
-          <button id="upload-btn" onclick="startUpload()" disabled
-            class="bg-red-700 hover:bg-red-600 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold px-6 py-2.5 rounded-xl transition-colors duration-200 flex items-center gap-2">
-            <span id="upload-btn-text">▶ Upload to YouTube</span>
-          </button>
-          <span id="upload-error" class="text-red-400 text-sm hidden"></span>
-        </div>
-
-        <!-- Progress section -->
-        <div id="upload-progress-wrap" class="hidden">
-          <div class="flex justify-between text-xs text-gray-500 mb-1">
-            <span id="upload-stage-label">Preparing...</span>
-            <span id="upload-percent">0%</span>
-          </div>
-          <div class="w-full bg-gray-800 rounded-full h-3 overflow-hidden mb-4">
-            <div id="upload-bar"
-              class="h-3 rounded-full transition-all duration-700 ease-linear"
-              style="width:0%; background: linear-gradient(90deg,#b91c1c,#ef4444);">
-            </div>
-          </div>
-          <!-- Stage steps -->
-          <div class="bg-gray-800 rounded-xl p-4 space-y-2.5 text-sm">
-            <div id="ustep-upload" class="flex items-center gap-2 text-gray-400">
-              <span id="uicon-upload" class="text-gray-600">○</span> Uploading video to YouTube
-            </div>
-            <div id="ustep-thumb" class="flex items-center gap-2 text-gray-400">
-              <span id="uicon-thumb" class="text-gray-600">○</span> Generating &amp; setting thumbnail
-            </div>
-          </div>
-        </div>
-
-        <!-- Done panel -->
-        <div id="upload-done-panel" class="hidden mt-4">
-          <div class="bg-red-900/20 border border-red-800 rounded-xl p-5">
-            <p class="text-red-300 font-semibold mb-4">🎉 Uploaded as unlisted draft!</p>
-            <div class="space-y-2.5">
-              <a id="upload-video-link" href="#" target="_blank"
-                class="flex items-center gap-2 text-sm text-white bg-red-700 hover:bg-red-600 font-semibold py-2.5 px-4 rounded-xl transition-colors justify-center">
-                ▶ View on YouTube
-              </a>
-              <a id="upload-studio-link" href="#" target="_blank"
-                class="flex items-center gap-2 text-sm text-gray-300 hover:text-white border border-gray-700 hover:border-gray-500 py-2.5 px-4 rounded-xl transition-colors justify-center">
-                ✏ Edit in YouTube Studio
-              </a>
-            </div>
-            <p class="text-xs text-gray-500 mt-3 text-center">Video is unlisted — go to Studio to publish it publicly.</p>
-          </div>
-        </div>
-
       </div>
     </div>
 
@@ -2221,342 +1762,6 @@ LANDING_PAGE = """<!DOCTYPE html>
     function showError(id, msg) { const el = document.getElementById(id); el.textContent = '⚠ ' + msg; el.classList.remove('hidden'); }
     function hideError(id) { document.getElementById(id).classList.add('hidden'); }
 
-    // ── Step 4: Post-Production ───────────────────────────────────────────────
-    let renderPollTimer = null;
-    let rawFiles = [];
-
-    function setRenderStageIcon(id, state) {
-      const icon = document.getElementById('ricon-' + id);
-      const row  = document.getElementById('rstep-' + id);
-      if (state === 'done') {
-        icon.textContent = '✓';
-        icon.className = 'text-green-400';
-        row.className = 'flex items-center gap-2 text-gray-300';
-      } else if (state === 'active') {
-        icon.innerHTML = '<span class="spinner" style="width:14px;height:14px;border-width:2px"></span>';
-        row.className = 'flex items-center gap-2 text-white font-medium';
-      } else {
-        icon.textContent = '○';
-        icon.className = 'text-gray-600';
-        row.className = 'flex items-center gap-2 text-gray-400';
-      }
-    }
-
-    async function checkRawFiles() {
-      const badge = document.getElementById('raw-file-badge');
-      badge.textContent = '○ Checking...';
-      badge.className = 'text-xs px-3 py-1 rounded-full bg-gray-800 text-gray-500';
-      try {
-        const res  = await fetch('/api/render/check');
-        const data = await res.json();
-        rawFiles = data.files || [];
-
-        const btn         = document.getElementById('render-btn');
-        const selectorWrap = document.getElementById('file-selector-wrap');
-        const selector    = document.getElementById('file-selector');
-        const hint        = document.getElementById('raw-hint');
-
-        if (rawFiles.length === 0) {
-          badge.textContent = '○ No raw video found';
-          badge.className = 'text-xs px-3 py-1 rounded-full bg-gray-800 text-gray-500';
-          btn.disabled = true;
-          selectorWrap.classList.add('hidden');
-          hint.classList.remove('hidden');
-        } else {
-          badge.textContent = '● ' + rawFiles.length + ' raw video' + (rawFiles.length > 1 ? 's' : '') + ' ready';
-          badge.className = 'text-xs px-3 py-1 rounded-full bg-green-900/50 text-green-400 border border-green-800';
-          hint.classList.add('hidden');
-          selector.innerHTML = rawFiles.map(f => '<option value="' + f + '">' + f + '</option>').join('');
-          selectorWrap.classList.toggle('hidden', rawFiles.length <= 1);
-          // Check if render already running
-          const sres  = await fetch('/api/render/status');
-          const sdata = await sres.json();
-          if (sdata.status === 'running') {
-            btn.disabled = true;
-            document.getElementById('render-btn-text').textContent = 'Rendering...';
-            document.getElementById('render-progress-wrap').classList.remove('hidden');
-            applyRenderStatus(sdata);
-            startRenderPolling();
-          } else if (sdata.status === 'done') {
-            btn.disabled = false;
-            document.getElementById('render-btn-text').textContent = '▶ Render Again';
-            document.getElementById('render-progress-wrap').classList.remove('hidden');
-            applyRenderStatus(sdata);
-          } else {
-            btn.disabled = false;
-          }
-        }
-      } catch(e) {
-        badge.textContent = '⚠ Error';
-        badge.className = 'text-xs px-3 py-1 rounded-full bg-red-900/30 text-red-400';
-      }
-    }
-
-    async function startRender() {
-      const selector = document.getElementById('file-selector');
-      const fileName = rawFiles.length === 1 ? rawFiles[0] : selector.value;
-      if (!fileName) return;
-
-      const btn = document.getElementById('render-btn');
-      btn.disabled = true;
-      document.getElementById('render-btn-text').innerHTML = '<span class="spinner" style="width:14px;height:14px;border-width:2px"></span> Starting...';
-      hideError('render-error');
-      document.getElementById('render-done-panel').classList.add('hidden');
-
-      try {
-        const res  = await fetch('/api/render/start', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ file: fileName }),
-        });
-        const data = await res.json();
-        if (data.status === 'error') throw new Error(data.message);
-
-        // Reset stage icons and show progress bar
-        ['normalize', 'concat', 'logo'].forEach(id => setRenderStageIcon(id, 'pending'));
-        document.getElementById('render-bar').style.width = '0%';
-        document.getElementById('render-percent').textContent = '0%';
-        document.getElementById('render-stage-label').textContent = 'Starting FFmpeg...';
-        document.getElementById('render-progress-wrap').classList.remove('hidden');
-        document.getElementById('render-btn-text').textContent = 'Rendering...';
-        startRenderPolling();
-      } catch(e) {
-        btn.disabled = false;
-        document.getElementById('render-btn-text').textContent = '▶ Start Rendering';
-        showError('render-error', e.message);
-      }
-    }
-
-    function startRenderPolling() {
-      stopRenderPolling();
-      pollRenderStatus();
-      renderPollTimer = setInterval(pollRenderStatus, 3000);
-    }
-
-    function stopRenderPolling() {
-      if (renderPollTimer) { clearInterval(renderPollTimer); renderPollTimer = null; }
-    }
-
-    async function pollRenderStatus() {
-      try {
-        const res  = await fetch('/api/render/status');
-        const data = await res.json();
-        applyRenderStatus(data);
-      } catch(_) {}
-    }
-
-    function applyRenderStatus(data) {
-      const pct   = data.progress || 0;
-      const label = data.label || '';
-      document.getElementById('render-bar').style.width = pct + '%';
-      document.getElementById('render-percent').textContent = pct + '%';
-      if (label) document.getElementById('render-stage-label').textContent = label;
-
-      // Update stage icons by progress threshold
-      if (pct < 1) {
-        ['normalize','concat','logo'].forEach(id => setRenderStageIcon(id, 'pending'));
-      } else if (pct < 65) {
-        setRenderStageIcon('normalize', 'active');
-        setRenderStageIcon('concat', 'pending');
-        setRenderStageIcon('logo', 'pending');
-      } else if (pct < 85) {
-        setRenderStageIcon('normalize', 'done');
-        setRenderStageIcon('concat', 'active');
-        setRenderStageIcon('logo', 'pending');
-      } else if (pct < 100) {
-        setRenderStageIcon('normalize', 'done');
-        setRenderStageIcon('concat', 'done');
-        setRenderStageIcon('logo', 'active');
-      } else {
-        setRenderStageIcon('normalize', 'done');
-        setRenderStageIcon('concat', 'done');
-        setRenderStageIcon('logo', 'done');
-      }
-
-      if (data.status === 'done') {
-        stopRenderPolling();
-        document.getElementById('render-done-panel').classList.remove('hidden');
-        document.getElementById('render-btn-text').textContent = '▶ Render Again';
-        document.getElementById('render-btn').disabled = false;
-        if (data.output) {
-          document.getElementById('render-download-link').href =
-            '/api/render/download/' + encodeURIComponent(data.output);
-        }
-      } else if (data.status === 'error') {
-        stopRenderPolling();
-        document.getElementById('render-stage-label').textContent = '⚠ ' + (data.error || 'Render failed.');
-        document.getElementById('render-btn-text').textContent = '▶ Try Again';
-        document.getElementById('render-btn').disabled = false;
-      }
-    }
-
-    // ── Step 5: YouTube Upload ────────────────────────────────────────────────
-    let uploadPollTimer = null;
-    let finalFiles = [];
-
-    function setUploadStageIcon(id, state) {
-      const icon = document.getElementById('uicon-' + id);
-      const row  = document.getElementById('ustep-' + id);
-      if (state === 'done') {
-        icon.textContent = '✓';
-        icon.className = 'text-green-400';
-        row.className = 'flex items-center gap-2 text-gray-300';
-      } else if (state === 'active') {
-        icon.innerHTML = '<span class="spinner" style="width:14px;height:14px;border-width:2px"></span>';
-        row.className = 'flex items-center gap-2 text-white font-medium';
-      } else {
-        icon.textContent = '○';
-        icon.className = 'text-gray-600';
-        row.className = 'flex items-center gap-2 text-gray-400';
-      }
-    }
-
-    async function checkFinalFiles() {
-      const badge = document.getElementById('final-file-badge');
-      badge.textContent = '○ Checking...';
-      badge.className = 'text-xs px-3 py-1 rounded-full bg-gray-800 text-gray-500';
-      try {
-        const res  = await fetch('/api/upload/check');
-        const data = await res.json();
-        finalFiles = data.files || [];
-
-        const btn          = document.getElementById('upload-btn');
-        const selectorWrap = document.getElementById('upload-file-selector-wrap');
-        const selector     = document.getElementById('upload-file-selector');
-        const hint         = document.getElementById('final-hint');
-
-        if (finalFiles.length === 0) {
-          badge.textContent = '○ No final video found';
-          badge.className = 'text-xs px-3 py-1 rounded-full bg-gray-800 text-gray-500';
-          btn.disabled = true;
-          selectorWrap.classList.add('hidden');
-          hint.classList.remove('hidden');
-        } else {
-          badge.textContent = '● ' + finalFiles.length + ' video' + (finalFiles.length > 1 ? 's' : '') + ' ready';
-          badge.className = 'text-xs px-3 py-1 rounded-full bg-green-900/50 text-green-400 border border-green-800';
-          hint.classList.add('hidden');
-          selector.innerHTML = finalFiles.map(f => '<option value="' + f + '">' + f + '</option>').join('');
-          selectorWrap.classList.toggle('hidden', finalFiles.length <= 1);
-
-          // Check if upload already running/done
-          const sres  = await fetch('/api/upload/status');
-          const sdata = await sres.json();
-          if (sdata.status === 'running') {
-            btn.disabled = true;
-            document.getElementById('upload-btn-text').textContent = 'Uploading...';
-            document.getElementById('upload-progress-wrap').classList.remove('hidden');
-            applyUploadStatus(sdata);
-            startUploadPolling();
-          } else if (sdata.status === 'done') {
-            btn.disabled = false;
-            document.getElementById('upload-btn-text').textContent = '▶ Upload Another';
-            document.getElementById('upload-progress-wrap').classList.remove('hidden');
-            applyUploadStatus(sdata);
-          } else {
-            btn.disabled = false;
-          }
-        }
-      } catch(e) {
-        badge.textContent = '⚠ Error';
-        badge.className = 'text-xs px-3 py-1 rounded-full bg-red-900/30 text-red-400';
-      }
-    }
-
-    async function startUpload() {
-      const selector   = document.getElementById('upload-file-selector');
-      const scripture  = document.getElementById('upload-scripture').value.trim();
-      const fileName   = finalFiles.length === 1 ? finalFiles[0] : selector.value;
-
-      if (!scripture) {
-        showError('upload-error', 'Enter a scripture reference (e.g. Matthew 10).');
-        return;
-      }
-      if (!fileName) return;
-
-      const btn = document.getElementById('upload-btn');
-      btn.disabled = true;
-      document.getElementById('upload-btn-text').innerHTML = '<span class="spinner" style="width:14px;height:14px;border-width:2px"></span> Starting...';
-      hideError('upload-error');
-      document.getElementById('upload-done-panel').classList.add('hidden');
-
-      try {
-        const res  = await fetch('/api/upload/start', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ file: fileName, scripture }),
-        });
-        const data = await res.json();
-        if (data.status === 'error') throw new Error(data.message);
-
-        ['upload', 'thumb'].forEach(id => setUploadStageIcon(id, 'pending'));
-        document.getElementById('upload-bar').style.width = '0%';
-        document.getElementById('upload-percent').textContent = '0%';
-        document.getElementById('upload-stage-label').textContent = 'Starting upload...';
-        document.getElementById('upload-progress-wrap').classList.remove('hidden');
-        document.getElementById('upload-btn-text').textContent = 'Uploading...';
-        startUploadPolling();
-      } catch(e) {
-        btn.disabled = false;
-        document.getElementById('upload-btn-text').textContent = '▶ Upload to YouTube';
-        showError('upload-error', e.message);
-      }
-    }
-
-    function startUploadPolling() {
-      stopUploadPolling();
-      pollUploadStatus();
-      uploadPollTimer = setInterval(pollUploadStatus, 2000);
-    }
-
-    function stopUploadPolling() {
-      if (uploadPollTimer) { clearInterval(uploadPollTimer); uploadPollTimer = null; }
-    }
-
-    async function pollUploadStatus() {
-      try {
-        const res  = await fetch('/api/upload/status');
-        const data = await res.json();
-        applyUploadStatus(data);
-      } catch(_) {}
-    }
-
-    function applyUploadStatus(data) {
-      const pct   = data.progress || 0;
-      const label = data.label || '';
-      document.getElementById('upload-bar').style.width = pct + '%';
-      document.getElementById('upload-percent').textContent = pct + '%';
-      if (label) document.getElementById('upload-stage-label').textContent = label;
-
-      if (pct < 89) {
-        setUploadStageIcon('upload', pct > 0 ? 'active' : 'pending');
-        setUploadStageIcon('thumb', 'pending');
-      } else if (pct < 100) {
-        setUploadStageIcon('upload', 'done');
-        setUploadStageIcon('thumb', 'active');
-      } else {
-        setUploadStageIcon('upload', 'done');
-        setUploadStageIcon('thumb', 'done');
-      }
-
-      if (data.status === 'done') {
-        stopUploadPolling();
-        document.getElementById('upload-done-panel').classList.remove('hidden');
-        document.getElementById('upload-btn-text').textContent = '▶ Upload Another';
-        document.getElementById('upload-btn').disabled = false;
-        if (data.video_url) {
-          document.getElementById('upload-video-link').href = data.video_url;
-        }
-        if (data.studio_url) {
-          document.getElementById('upload-studio-link').href = data.studio_url;
-        }
-      } else if (data.status === 'error') {
-        stopUploadPolling();
-        document.getElementById('upload-stage-label').textContent = '⚠ ' + (data.error || 'Upload failed.');
-        document.getElementById('upload-btn-text').textContent = '▶ Try Again';
-        document.getElementById('upload-btn').disabled = false;
-      }
-    }
-
     // Populate voice picker from server. Runs once at load — voices rarely change.
     async function loadV9Voices() {
       const sel = document.getElementById('bible-voice');
@@ -2609,8 +1814,8 @@ LANDING_PAGE = """<!DOCTYPE html>
       try { await audio.play(); } catch(e) { restore(); }
     }
 
-    // Auto-check files on page load
-    window.addEventListener('load', () => { checkRawFiles(); checkFinalFiles(); loadV9Voices(); });
+    // Populate the voice picker on page load.
+    window.addEventListener('load', () => { loadV9Voices(); });
 
   </script>
 </body>

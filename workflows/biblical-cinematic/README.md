@@ -19,9 +19,9 @@ Browser (http://localhost:8000)
       → JSON2Video (Ken Burns)       → HD video render
   → Live progress bar (polls /api/status every 6s)
   → Download raw MP4 when done (~8–13 min)
-  → Drop raw MP4 into output/raw/ → Step 4 panel → Start Rendering
+  → (optional, local CLI) Drop raw MP4 into output/raw/ → post_produce.py
       → FFmpeg: normalize → concat intro/outros → overlay logo
-  → Download final MP4
+  → Final MP4
 ```
 
 **Cost per video:** ~$1.32 — Perplexity $0.15 + ElevenLabs $0.65 + JSON2Video $0.52
@@ -79,14 +79,11 @@ If setting up from scratch or on a new n8n instance:
 
 ---
 
-## Post-Production (Step 4 in the web app)
+## Post-Production (local CLI / `add-covers` skill)
 
-After downloading your raw MP4 from JSON2Video:
-1. Drop the file into `output/raw/`
-2. In the web app, scroll to **Step 4 — Post-Production**
-3. Click **↺ Refresh** — badge turns green showing the file is ready
-4. Click **▶ Start Rendering** — progress bar tracks all FFmpeg stages
-5. Click **⬇ Download Final Video** when done
+> The web-app **Step 4** panel was removed on 2026-06-06 when the app went public — post-production needs local FFmpeg + filesystem access, which the Modal deployment doesn't have. Run it locally via the CLI below (or the `add-covers` skill).
+
+After downloading your raw MP4 from JSON2Video, drop it into `output/raw/` and run `post_produce.py` (see commands below).
 
 Adds: intro → main video → outro_1 → outro_2 → outro_3 → logo watermark.
 *(Music is disabled until caption sync is resolved.)*

@@ -5,6 +5,36 @@ Archive this file when the app reaches full production.
 
 ---
 
+## [2026-06-06] Public launch: auth fell OPEN, not closed — and enabling it would have locked out the public
+
+**Symptom:** Production `/admin/waitlist` returned **200** to anyone — exposing signup emails, IPs, invite tokens, and paid-credit counts. The Basic Auth middleware existed but was never installed in prod.
+
+**Root cause (two coupled problems):**
+1. **Fail-open install guard.** The middleware was wrapped in `if _AUTH_USER and _AUTH_PASS:`. `APP_USERNAME`/`APP_PASSWORD` weren't in the Modal secret, so the entire middleware was skipped and the whole app — including `/admin/*` — was public. Missing config silently disabled security instead of denying.
+2. **Wrong gating model for a public app.** Even if enabled as written, the middleware gated the *entire* app behind one password with only `/`, `/landing/*`, `/billing/*` allowlisted. That's correct for a personal tool but for the public marketing launch it would have 401'd every visitor the instant they hit `/v9/api/*`, `/custom/api/*`, or `/api/clean` — i.e. enabling auth would have broken the product. Non-obvious: the "fix" (add the two env vars) would have made the app unusable.
+
+**Fix:** Inverted the model in [server/app.py](server/app.py) — "public app with a private `/admin/` zone" instead of "private app with a public allowlist":
+- Middleware is **always installed** (no env guard).
+- Requests outside `/admin/*` pass straight through (public).
+- `/admin/*` requires valid Basic Auth, and **fails closed**: if `APP_USERNAME`/`APP_PASSWORD` are unset, it returns 401 rather than opening.
+- Still requires a **redeploy** to take effect after setting the secret — the middleware reads env at import time, so warm containers keep old behavior (`modal app stop` then `modal deploy`).
+
+Verified the gating logic with a pure-Starlette TestClient harness (creds unset → `/admin/*` 401, public routes 200; creds set → admin needs correct Basic Auth) since the full FastAPI app can't boot on this machine (see next entry).
+
+**Files changed:** `workflows/biblical-cinematic/server/app.py`.
+
+---
+
+## [2026-06-06] Local server won't boot on this desktop — Python 3.14 env is broken (not a code bug)
+
+**Symptom:** `python app.py` crashes at `app = FastAPI(title="Anointed")` with `TypeError: Router.__init__() got an unexpected keyword argument 'on_startup'`. Happens before any app code runs.
+
+**Root cause:** The machine's system Python 3.14 has **starlette 1.2.1** installed alongside **fastapi 0.115.0**. That starlette dropped the `on_startup`/`on_shutdown` Router kwargs that fastapi 0.115 still passes. There's no project venv, so the server runs against this mismatched global env. Worse, **pip is also broken** on this Python 3.14 (`RecursionError: maximum recursion depth exceeded` in `ssl.py verify_mode`), so you can't `pip install` a compatible starlette to fix it — even with the sandbox disabled.
+
+**Workaround / TODO:** Local full-server smoke testing is blocked until the Python env is repaired (create a clean venv with a working pip, or pin `starlette<0.39`). For now, static checks (`python -m py_compile app.py`, grep for dangling refs) + isolated logic harnesses cover what they can; final runtime verification happens on Modal (which builds its own correctly-pinned image from requirements.txt). Modal deploys are unaffected by this local breakage.
+
+---
+
 ## [2026-04-19] Stop button does nothing on Modal + pipeline freezes silently
 
 **Symptom:** User clicks **Stop Rendering** mid-render on the deployed Modal app. API responds `{"status": "stop_requested"}` but the pipeline keeps running. Later the render pauses/errors on its own. After the container scales down, `/api/status` returns `phase=idle, scenes=null, processed=[]` — all in-memory pipeline state is gone even though 3 of 6 Kling clips were already paid for.
