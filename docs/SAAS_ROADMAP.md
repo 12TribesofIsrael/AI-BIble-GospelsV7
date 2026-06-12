@@ -4,6 +4,30 @@ Turn AI Bible Gospels from a personal tool into a paid SaaS product. Tasks order
 
 ---
 
+## 📊 Status Board — updated 2026-06-12
+
+> Single source of truth for "where are we." Reconciled against the actual code, not the plan.
+> Legend: ✅ Done · 🟡 Partial / different approach · ⬜ Not started · ⏭️ Skipped
+> Changelog entries that advance a roadmap item are tagged `Roadmap: #N` in [CHANGELOG.md](../workflows/biblical-cinematic/CHANGELOG.md).
+
+| # | Item | Status | Shipped | Notes |
+|---|------|--------|---------|-------|
+| 1 | Rate Limiting | ✅ Done | 2026-04-17 | `slowapi`, 5/hr render · 30/hr Claude |
+| 2 | API Key Isolation (BYOK) | ⏭️ Skipped | — | Most users won't have their own fal/Anthropic keys |
+| 3 | Usage Tracking | ✅ Done | 2026-04-17 | One event per money-spend → `usage_log.json` + Supabase |
+| 4 | Database (Supabase) | 🟡 Partial | 2026-04-18 | Wired as parallel DB; JSON kept as fallback. `renders` writes + RLS still TODO |
+| 5 | User Accounts & Auth | 🟡 Partial | 2026-06 | **Diverged:** no login/password. Built email **waitlist → admin-issued invite token** gating instead. Full Supabase Auth still open |
+| 6 | Multi-Tenancy | ⬜ Not started | — | Still one global `pipeline_state` — **#1 blocker for concurrent users** |
+| 7 | Credit System | 🟡 Partial | 2026-06 | `paid_credits` / `free_used` columns + deduct on invite claim. No tiered plans or balance-in-header UI yet |
+| 8 | Stripe Billing | 🟡 Partial | 2026-06 | Stripe **Payment Links** ($25/$50) + `/billing/webhook` → `add_paid_credits`. No Checkout/Subscriptions/portal |
+| 9 | Render Queue | ⬜ Not started | — | Still one render at a time |
+| 10 | Landing Page | ✅ Done | 2026-06 | `landingpage/` + hero loop, live on anointed.app |
+| 11 | Custom Domain | ✅ Done | 2026-06 | `anointed.app` via Cloudflare Worker proxy (`ops/cloudflare-proxy/`) |
+
+**Where we are:** Phases 1–4 all have shipped pieces. The current paid beta runs on the waitlist→invite→Payment-Link path (a lean substitute for full auth + tiered credits). **The biggest open gaps before scaling are #6 Multi-Tenancy (concurrency blocker) and finishing #5 (real auth) / #7 (tiered credits).**
+
+---
+
 ## Phase 1: Quick Wins (1-2 hours each)
 
 ### 1. Rate Limiting ✓ (done 2026-04-17)
@@ -163,4 +187,4 @@ Decided to skip BYOK — most real users won't have their own fal.ai/Anthropic a
 
 ---
 
-*Created: 2026-04-05 | Version: v12*
+*Created: 2026-04-05 | Status board last reconciled: 2026-06-12*

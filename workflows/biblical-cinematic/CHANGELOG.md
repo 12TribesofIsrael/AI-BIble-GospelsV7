@@ -2,6 +2,28 @@
 
 All notable changes to the Biblical Cinematic Generator. Each entry includes what changed, why, and what to do if it breaks.
 
+> **Roadmap link:** entries that advance a [SaaS Roadmap](../../docs/SAAS_ROADMAP.md) item are tagged `**Roadmap:** #N`. See the Status Board at the top of the roadmap for overall progress.
+
+---
+
+## [v9.0.0] - 2026-06-06 — Public Launch + Beta Monetization
+**Roadmap:** #5 (Auth — via invite gating), #7 (Credits), #8 (Stripe Billing), #10 (Landing Page), #11 (Custom Domain)
+
+### Added
+- **Public launch** — app is now PUBLIC; only `/admin/*` is gated by fail-closed Basic Auth. Web Step 4/5 (post-prod + YouTube) removed from the app (now CLI/skill-only).
+- **Custom domain** `anointed.app` via Cloudflare Worker reverse proxy (`ops/cloudflare-proxy/`).
+- **Landing page** (`landingpage/`) with hero video loop carousel.
+- **Beta invite flow** — email waitlist → admin-issued invite token → claim free chapter. Endpoints: `/api/waitlist`, `/api/invite/{token}`, `/api/invite/{token}/claim`, `/admin/invites/issue`, `/admin/waitlist` (+ per-row Delete).
+- **Stripe billing (Payment Links)** — `STRIPE_LINK_25` / `STRIPE_LINK_50` upsells + `POST /billing/webhook` → `checkout.session.completed` → `add_paid_credits`. `paid_credits` / `free_used` tracked per waitlist row in Supabase.
+- **Resend** transactional email on waitlist signup + invite send.
+- Supabase keepalive cron (prevents free-tier auto-pause); `--skip-json2video` flag for local FFmpeg assembly; LoRA support + Kling model picker + retry on `generate.py` CLI.
+
+### Note
+- This is the lean beta substitute for full Supabase Auth (#5) and tiered credit plans (#7) — see roadmap Status Board for what's still open.
+
+### Rollback
+- `git revert` the public-launch range. Stripe/waitlist features are gated by env vars (`STRIPE_*`, `RESEND_API_KEY`, `SUPABASE_*`) — unset them to disable without reverting code.
+
 ---
 
 ## [v8.2.0] - 2026-04-20
