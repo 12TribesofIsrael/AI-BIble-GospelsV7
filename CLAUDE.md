@@ -426,6 +426,7 @@ These run **automatically** at the end of every session where code changed.
 | How-to-use steps changed | workflow `README.md` Quick Start |
 | Windows/server behavior discovered | `CLAUDE.md` setup notes + `MEMORY.md` |
 | Bug fixed with a non-obvious root cause | `ERRORS.md` + `MEMORY.md` |
+| SaaS roadmap item shipped / status changed | `docs/SAAS_ROADMAP.md` Status Board → then `node scripts/reconcile-roadmap.js` |
 
 ### Never update for:
 - Internal logic changes that don't affect usage
@@ -438,3 +439,14 @@ These run **automatically** at the end of every session where code changed.
 3. Did any **run commands or usage steps** change? → update READMEs
 4. Did we discover a **Windows/server quirk**? → add to `ERRORS.md` + `MEMORY.md`
 5. Update `MEMORY.md` with anything that should persist across sessions
+6. Did any **SaaS roadmap item** move (shipped / status changed)? → edit the Status Board in [docs/SAAS_ROADMAP.md](docs/SAAS_ROADMAP.md), then **always** run `node scripts/reconcile-roadmap.js` so the `/admin/roadmap` dashboard stays in sync. (Run `node scripts/reconcile-roadmap.js --check` to detect drift without writing.)
+
+---
+
+## SaaS Roadmap Status Tracking
+
+Progress against the SaaS roadmap is tracked in two synced places:
+- **[docs/SAAS_ROADMAP.md](docs/SAAS_ROADMAP.md)** — the **Status Board** table at the top is the single source of truth (✅/🟡/⬜/⏭️ per item + ship date).
+- **`/admin/roadmap`** — a visual dashboard ([landingpage/web/roadmap.html](landingpage/web/roadmap.html)) served behind admin auth, linked from the admin panel header. **Auto-generated — never hand-edit its `ITEMS` array.**
+
+Workflow: edit the markdown Status Board, then run [`node scripts/reconcile-roadmap.js`](scripts/reconcile-roadmap.js) to regenerate the dashboard. Changelog entries that advance a roadmap item are tagged `Roadmap: #N` in [CHANGELOG.md](workflows/biblical-cinematic/CHANGELOG.md). This reconcile step is part of the session-end checklist above.

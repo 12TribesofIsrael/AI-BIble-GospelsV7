@@ -100,28 +100,29 @@
   <div id="phases"></div>
 
   <footer>
-    Source of truth: <a href="https://github.com">docs/SAAS_ROADMAP.md</a> Status Board ·
-    Edit the <code>ITEMS</code> array in <code>landingpage/web/roadmap.html</code> when status changes ·
+    Source of truth: <code>docs/SAAS_ROADMAP.md</code> Status Board ·
+    Edit the markdown, then run <code>node scripts/reconcile-roadmap.js</code> to regenerate this page ·
     Served at <code>/admin/roadmap</code> (admin-gated).
   </footer>
 </div>
 
 <script>
-// ── Single source of data for this dashboard ──────────────────────────────
-// Keep in sync with the Status Board table in docs/SAAS_ROADMAP.md.
+// ── AUTO-GENERATED — do not edit UPDATED or ITEMS by hand ──────────────────
+// Source of truth: the Status Board table in docs/SAAS_ROADMAP.md.
+// Regenerate with: node scripts/reconcile-roadmap.js
 const UPDATED = "2026-06-12";
 const ITEMS = [
-  { n: 1,  phase: "Phase 1 · Quick Wins",   title: "Rate Limiting",          status: "done",    ship: "2026-04-17", note: "slowapi — 5/hr render · 30/hr Claude-only" },
-  { n: 2,  phase: "Phase 1 · Quick Wins",   title: "API Key Isolation (BYOK)", status: "skip",  ship: "",           note: "Skipped — most users won't have their own fal/Anthropic keys" },
-  { n: 3,  phase: "Phase 1 · Quick Wins",   title: "Usage Tracking",         status: "done",    ship: "2026-04-17", note: "One event per money-spend → usage_log.json + Supabase" },
-  { n: 4,  phase: "Phase 2 · Foundation",   title: "Database (Supabase)",    status: "partial", ship: "2026-04-18", note: "Parallel DB; JSON fallback kept. renders writes + RLS still TODO" },
-  { n: 5,  phase: "Phase 2 · Foundation",   title: "User Accounts & Auth",   status: "partial", ship: "2026-06",    note: "Diverged: email waitlist → admin invite token. Full Supabase Auth still open" },
-  { n: 6,  phase: "Phase 2 · Foundation",   title: "Multi-Tenancy",          status: "todo",    ship: "",           note: "Still one global pipeline_state — two users overwrite each other", blocker: true },
-  { n: 7,  phase: "Phase 3 · Monetization", title: "Credit System",          status: "partial", ship: "2026-06",    note: "paid_credits / free_used + deduct on claim. No tiered plans or balance UI yet" },
-  { n: 8,  phase: "Phase 3 · Monetization", title: "Stripe Billing",         status: "partial", ship: "2026-06",    note: "Payment Links ($25/$50) + /billing/webhook → add_paid_credits. No Checkout/subs/portal" },
-  { n: 9,  phase: "Phase 4 · Scale & Polish", title: "Render Queue",         status: "todo",    ship: "",           note: "Still one render at a time" },
-  { n: 10, phase: "Phase 4 · Scale & Polish", title: "Landing Page",         status: "done",    ship: "2026-06",    note: "landingpage/ + hero loop, live on anointed.app" },
-  { n: 11, phase: "Phase 4 · Scale & Polish", title: "Custom Domain",        status: "done",    ship: "2026-06",    note: "anointed.app via Cloudflare Worker proxy" },
+  { n: 1, phase: "Phase 1 · Quick Wins", title: "Rate Limiting", status: "done", ship: "2026-04-17", note: "slowapi, 5/hr render · 30/hr Claude" },
+  { n: 2, phase: "Phase 1 · Quick Wins", title: "API Key Isolation (BYOK)", status: "skip", ship: "", note: "Most users won't have their own fal/Anthropic keys" },
+  { n: 3, phase: "Phase 1 · Quick Wins", title: "Usage Tracking", status: "done", ship: "2026-04-17", note: "One event per money-spend → usage_log.json + Supabase" },
+  { n: 4, phase: "Phase 2 · Foundation", title: "Database (Supabase)", status: "partial", ship: "2026-04-18", note: "Wired as parallel DB; JSON kept as fallback. renders writes + RLS still TODO" },
+  { n: 5, phase: "Phase 2 · Foundation", title: "User Accounts & Auth", status: "partial", ship: "2026-06", note: "Diverged: no login/password. Built email waitlist → admin-issued invite token gating instead. Full Supabase Auth still open" },
+  { n: 6, phase: "Phase 2 · Foundation", title: "Multi-Tenancy", status: "todo", ship: "", note: "Still one global pipeline_state — #1 blocker for concurrent users", blocker: true },
+  { n: 7, phase: "Phase 3 · Monetization", title: "Credit System", status: "partial", ship: "2026-06", note: "paid_credits / free_used columns + deduct on invite claim. No tiered plans or balance-in-header UI yet" },
+  { n: 8, phase: "Phase 3 · Monetization", title: "Stripe Billing", status: "partial", ship: "2026-06", note: "Stripe Payment Links ($25/$50) + /billing/webhook → add_paid_credits. No Checkout/Subscriptions/portal" },
+  { n: 9, phase: "Phase 4 · Scale & Polish", title: "Render Queue", status: "todo", ship: "", note: "Still one render at a time" },
+  { n: 10, phase: "Phase 4 · Scale & Polish", title: "Landing Page", status: "done", ship: "2026-06", note: "landingpage/ + hero loop, live on anointed.app" },
+  { n: 11, phase: "Phase 4 · Scale & Polish", title: "Custom Domain", status: "done", ship: "2026-06", note: "anointed.app via Cloudflare Worker proxy (ops/cloudflare-proxy/)" },
 ];
 
 const LABEL = { done: "✅ Done", partial: "🟡 Partial", todo: "⬜ Not started", skip: "⏭️ Skipped" };
