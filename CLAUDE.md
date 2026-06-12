@@ -367,8 +367,11 @@ The unified web app is deployed to **Modal.com** with Basic Auth protection.
 
 ### Deploy
 ```bash
-modal deploy modal_app.py
+# Windows: PYTHONIOENCODING=utf-8 is REQUIRED — see note below
+PYTHONIOENCODING=utf-8 python -m modal deploy modal_app.py
 ```
+
+> **Windows gotcha:** plain `modal deploy` crashes with `'charmap' codec can't encode character '✓'` — Modal prints a `✓` that the default cp1252 console can't encode. Always prefix `PYTHONIOENCODING=utf-8` on this machine. (Same class of bug as the Gmail script note in the global CLAUDE.md.)
 
 ### Setup
 1. Create a Modal secret named `ai-bible-gospels` with: `FAL_KEY`, `JSON2VIDEO_API_KEY`, `ANTHROPIC_API_KEY`, `ELEVENLABS_API_KEY`, `APP_USERNAME`, `APP_PASSWORD`, `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`, `SUPABASE_DB_URL`, `RESEND_API_KEY`
