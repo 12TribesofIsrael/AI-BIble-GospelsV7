@@ -1833,6 +1833,7 @@ else:
 _LANDING_HTML_PATH = _LANDING_DIR / "index.html"
 _INVITE_HTML_PATH  = _LANDING_DIR / "invite.html"
 _ADMIN_HTML_PATH   = _LANDING_DIR / "admin.html"
+_ROADMAP_HTML_PATH = _LANDING_DIR / "roadmap.html"
 _LANDING_ASSET_WHITELIST = {
     "hero-loop.mp4", "sample-1.mp4", "sample-2.mp4", "sample-3.mp4", "sample-4.mp4",
     "hero-poster.jpg", "sample-1-poster.jpg", "sample-2-poster.jpg",
@@ -1856,6 +1857,18 @@ async def admin_panel():
         return HTMLResponse(content=_ADMIN_HTML_PATH.read_text(encoding="utf-8"))
     return HTMLResponse(
         content="<h1>Admin panel not deployed</h1>",
+        status_code=503,
+    )
+
+
+@app.get("/admin/roadmap", response_class=HTMLResponse)
+async def admin_roadmap():
+    """SaaS roadmap status dashboard — visual mirror of docs/SAAS_ROADMAP.md.
+    Gated by Basic Auth via the existing /admin/* middleware."""
+    if _ROADMAP_HTML_PATH.exists():
+        return HTMLResponse(content=_ROADMAP_HTML_PATH.read_text(encoding="utf-8"))
+    return HTMLResponse(
+        content="<h1>Roadmap dashboard not deployed</h1>",
         status_code=503,
     )
 
