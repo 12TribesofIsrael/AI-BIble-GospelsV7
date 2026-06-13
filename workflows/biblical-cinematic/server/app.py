@@ -1944,6 +1944,47 @@ def _resend_send(to: list[str], subject: str, html: str, reply_to: Optional[str]
         print(f"[waitlist] Resend send to {to} failed: {e}")
 
 
+_CRM_BASE = os.environ.get("BMB_CRM_INGEST_URL", "").rstrip("/")
+_CRM_KEY = os.environ.get("BMB_CRM_API_KEY", "")
+
+
+def _push_lead_to_crm(email: str, source: str,
+                      pipeline_stage: Optional[str] = None) -> None:
+    """Fire-and-forget: mirror a signup into the BMB LeadStack CRM.
+
+    Swallows all errors so a CRM outage never affects the signup flow. Skips
+    silently when the CRM env vars aren't configured. Email-only signups land
+    as contacts (no pipeline stage) — in the database and reachable, but not on
+    the sales board.
+    """
+    if not _CRM_BASE or not _CRM_KEY:
+        return
+    name = (email or "").strip().lower()
+    if not name:
+        return
+    try:
+        with httpx.Client(timeout=8.0) as client:
+            r = client.post(
+                f"{_CRM_BASE}/api/v1/contacts",
+                headers={
+                    "Authorization": f"Bearer {_CRM_KEY}",
+                    "Content-Type": "application/json",
+                    # 24h idempotency so a double-submit doesn't create two contacts
+                    "Idempotency-Key": f"{source}:{name}",
+                },
+                json={
+                    "name": name,
+                    "email": name,
+                    "source": "website-form",
+                    "tags": ["anointed", source],
+                    "pipeline_stage": pipeline_stage,
+                },
+            )
+            r.raise_for_status()
+    except Exception as e:
+        print(f"[crm] ingest for {email} failed: {e}")
+
+
 def _send_waitlist_notification(email: str, ip: str, source: str) -> None:
     """Fire-and-forget notification to the project inbox via Resend."""
     ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
@@ -2112,6 +2153,7 @@ async def api_waitlist_signup(request: Request, req: WaitlistRequest):
 
     _send_waitlist_notification(email, ip, "landing-page")
     _send_signer_confirmation(email)
+    _push_lead_to_crm(email, "landing-page")
     return {"status": "ok",
             "message": "You're on the list. We'll send your private link soon."}
 
