@@ -112,7 +112,7 @@ def generate_scenes_from_script(script_text):
             "Content-Type": "application/json",
         },
         json={
-            "model": "claude-sonnet-4-20250514",
+            "model": "claude-sonnet-4-6",
             "max_tokens": 8000,
             "messages": [
                 {

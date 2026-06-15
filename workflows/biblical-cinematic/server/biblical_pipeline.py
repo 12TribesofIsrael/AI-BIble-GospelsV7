@@ -393,7 +393,7 @@ def generate_image_prompts(narration_chunks, book="", chapter=""):
     resp = requests.post(
         ANTHROPIC_URL,
         headers={"x-api-key": ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "Content-Type": "application/json"},
-        json={"model": "claude-sonnet-4-20250514", "max_tokens": 8000,
+        json={"model": "claude-sonnet-4-6", "max_tokens": 8000,
               "messages": [{"role": "user", "content": user_msg}]},
         timeout=120,
     )

@@ -5,6 +5,21 @@ Archive this file when the app reaches full production.
 
 ---
 
+## [2026-06-15] Render 404s — hardcoded dated Claude model snapshot hit its retirement date
+
+**Symptom:** Starting a video render failed at scene generation with `⚠ 404 Client Error: Not Found for url: https://api.anthropic.com/v1/messages`. The endpoint URL was correct, so it read like an endpoint/network problem.
+
+**Root cause:** The scene-gen calls hardcoded the model ID `claude-sonnet-4-20250514` — a **dated snapshot** of Claude Sonnet 4. That snapshot was deprecated with a retirement date of **2026-06-15** (the day this hit). The Anthropic API returns **404 `not_found_error`** for a model ID it no longer serves — not a 400, not an auth error — which is why it masqueraded as a bad-endpoint problem. Auth issues would be 401; a typo'd-but-live model would also be 404, but here the ID was valid and simply retired.
+
+**Fix:** Swapped every call site to the bare alias **`claude-sonnet-4-6`** (same tier/pricing as Sonnet 4, $3/$15 per 1M — no cost change; this step only generates structured scene prompts so Opus isn't worth the 1.7×). Six occurrences:
+- `workflows/biblical-cinematic/server/biblical_pipeline.py` (production scene-gen)
+- `workflows/custom-script/router.py`, `generate.py`, `server.py`, `recover.py`
+- `scripts/heaven/generate_heaven.py`
+
+**Lesson:** **Never hardcode dated Claude model snapshots** (`claude-*-YYYYMMDD`) — they retire on a published schedule and 404 with no code change on your side. Use the bare alias (`claude-sonnet-4-6`, `claude-opus-4-8`), which doesn't carry a hard retirement date. Requires a **redeploy** to take effect on Modal (model ID read at request time, but warm containers run old code).
+
+---
+
 ## [2026-06-06] Public launch: auth fell OPEN, not closed — and enabling it would have locked out the public
 
 **Symptom:** Production `/admin/waitlist` returned **200** to anyone — exposing signup emails, IPs, invite tokens, and paid-credit counts. The Basic Auth middleware existed but was never installed in prod.
