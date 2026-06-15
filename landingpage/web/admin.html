@@ -22,6 +22,7 @@
     .badge-redeemed { background: #14532d; color: #bbf7d0; }
     .badge-rendering { background: #581c87; color: #e9d5ff; }
     .badge-ready    { background: #14532d; color: #bbf7d0; }
+    .badge-failed   { background: #7f1d1d; color: #fecaca; }
     select, input, textarea { color-scheme: dark; }
     table { border-collapse: separate; border-spacing: 0; }
     tbody tr:hover { background: rgba(255,255,255,0.025); }
@@ -130,14 +131,20 @@
 
       function deriveState(row) {
         if (row.invited_at && !row.redeemed_at && row.invite_token) return 'invited';
-        if (row.redeemed_at && !row.render_id) return 'redeemed';
-        if (row.render_id) return 'rendering';  // best-guess; actual render status would need a /admin/renders/{id} probe
+        if (row.render_id) {
+          // render_status is enriched server-side from the live pipeline + history.
+          const s = row.render_status;
+          if (s === 'done') return 'ready';
+          if (s === 'error' || s === 'stopped') return 'failed';
+          return 'rendering';  // generating_scenes / generating_media / rendering / linked-unknown
+        }
+        if (row.redeemed_at) return 'redeemed';
         return 'signedup';
       }
 
       const STATE_LABEL = {
         signedup: 'Signed up', invited: 'Invited', redeemed: 'Redeemed',
-        rendering: 'Render attached', ready: 'Ready',
+        rendering: 'Rendering', ready: 'Ready', failed: 'Failed',
       };
 
       function fmtDate(iso) {
@@ -184,15 +191,29 @@
               class="border border-gray-700 hover:border-amber-700 text-gray-300 px-3 py-1.5 rounded-lg text-xs transition">
               Re-send
             </button>`;
-        } else if (state === 'redeemed' || state === 'rendering') {
-          actions = `
-            <a href="/app" target="_blank"
-              class="text-amber-400 hover:text-amber-300 text-xs underline mr-3">Open /app</a>
-            <button data-action="senddone" data-token="${escapeHtml(r.invite_token || '')}"
-              data-email="${escapeHtml(r.email)}" data-chapter="${escapeHtml(r.chapter_picked || '')}"
-              class="bg-amber-500 hover:bg-amber-400 text-black font-semibold px-3 py-1.5 rounded-lg text-xs transition">
-              Send video-ready
-            </button>`;
+        } else {
+          // redeemed / rendering / ready / failed — all have a chapter pick.
+          const token = escapeHtml(r.invite_token || '');
+          const chap = escapeHtml(r.chapter_picked || '');
+          const email = escapeHtml(r.email);
+          const openApp = `<a href="/app" target="_blank"
+            class="text-amber-400 hover:text-amber-300 text-xs underline mr-3">Open /app</a>`;
+          const renderBtn = (label, cls) => `<button data-action="render" data-token="${token}"
+            data-chapter="${chap}" class="${cls} font-semibold px-3 py-1.5 rounded-lg text-xs transition mr-2">${label}</button>`;
+          const sendBtn = (cls) => `<button data-action="senddone" data-token="${token}"
+            data-email="${email}" data-chapter="${chap}"
+            class="${cls} px-3 py-1.5 rounded-lg text-xs transition">Send video-ready</button>`;
+
+          if (state === 'rendering') {
+            actions = `${openApp}<span class="text-purple-300 text-xs font-medium">● Rendering…</span>`;
+          } else if (state === 'failed') {
+            actions = `${openApp}${renderBtn('Re-render', 'bg-red-600 hover:bg-red-500 text-white')}`;
+          } else if (state === 'ready') {
+            actions = `${openApp}${sendBtn('bg-amber-500 hover:bg-amber-400 text-black font-semibold')}`;
+          } else { // redeemed — not rendered yet
+            actions = `${openApp}${renderBtn('Render chapter', 'bg-amber-500 hover:bg-amber-400 text-black')}`
+              + sendBtn('border border-gray-700 hover:border-amber-700 text-gray-300');
+          }
         }
 
         // Delete is available on every row (cleanup of test rows / bad signups).
@@ -249,6 +270,9 @@
         document.querySelectorAll('button[data-action="issue"]').forEach((btn) => {
           btn.addEventListener('click', () => issueInvite(btn.dataset.email, btn));
         });
+        document.querySelectorAll('button[data-action="render"]').forEach((btn) => {
+          btn.addEventListener('click', () => renderChapter(btn.dataset.token, btn.dataset.chapter, btn));
+        });
         document.querySelectorAll('button[data-action="senddone"]').forEach((btn) => {
           btn.addEventListener('click', () => openModal(btn.dataset.token, btn.dataset.email, btn.dataset.chapter));
         });
@@ -275,6 +299,34 @@
         } catch (e) {
           btn.innerText = '❌ Network';
           setTimeout(() => { btn.innerText = original; btn.disabled = false; }, 3000);
+        }
+      }
+
+      async function renderChapter(token, chapter, btn) {
+        if (!window.confirm(`Start the render for "${chapter}"?\n\nThe pipeline renders one video at a time and this spends API credits. Watch progress in the Render bar above.`)) return;
+        const original = btn.innerText;
+        btn.disabled = true;
+        btn.innerText = 'Starting…';
+        try {
+          const r = await fetch(`/admin/invites/${encodeURIComponent(token)}/render`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({}),
+          });
+          const data = await r.json().catch(() => ({}));
+          if (!r.ok) {
+            btn.innerText = `❌ ${data.detail || 'Failed'}`;
+            setTimeout(() => { btn.innerText = original; btn.disabled = false; }, 4000);
+            return;
+          }
+          btn.innerText = '✓ Started';
+          // Kick the status bar immediately (cancel the idle-paced loop, poll now).
+          if (rsTimer) { clearTimeout(rsTimer); rsTimer = null; }
+          pollRenderStatus();
+          setTimeout(load, 1000);  // refresh rows → badge flips to Rendering
+        } catch (e) {
+          btn.innerText = '❌ Network';
+          setTimeout(() => { btn.innerText = original; btn.disabled = false; }, 4000);
         }
       }
 
@@ -352,6 +404,7 @@
       // global state IS the active render. Poll fast while active, slow while idle.
       const RS_ACTIVE = new Set(['generating_scenes', 'generating_media', 'rendering']);
       let rsTimer = null;
+      let lastRsPhase = 'idle';
 
       function applyRenderStatus(d) {
         const phase = d.phase || 'idle';
@@ -409,6 +462,10 @@
           const r = await fetch('/v9/api/status');
           if (r.ok) phase = applyRenderStatus(await r.json());
         } catch (_) { /* keep last shown state on transient network error */ }
+        // When a render just finished (active → done/error), refresh the table so
+        // the per-row badge flips Rendering → Ready/Failed without a manual click.
+        if (RS_ACTIVE.has(lastRsPhase) && !RS_ACTIVE.has(phase)) load();
+        lastRsPhase = phase;
         const delay = RS_ACTIVE.has(phase) ? 2000 : 15000;
         rsTimer = setTimeout(pollRenderStatus, delay);
       }

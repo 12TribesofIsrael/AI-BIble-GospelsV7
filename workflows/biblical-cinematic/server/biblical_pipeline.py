@@ -129,6 +129,10 @@ pipeline_state = {
     "model": "v1.6",
     "aspect_ratio": "16:9",
     "voice_id": VOICE_ID,
+    # When an admin kicks off a render for a specific waitlist invitee, this holds
+    # the render id linked to their row (so save_to_history reuses it and the admin
+    # dashboard can match the live render back to the user). None for ad-hoc /app renders.
+    "render_id": None,
     # Pending fal.ai queue request persisted across container restarts — prevents
     # duplicate-charge ghosts when a long-running Kling clip is interrupted mid-poll.
     # {"kind": "flux"|"kling", "queue_url": str, "status_url": str, "response_url": str, "request_id": str}
@@ -564,7 +568,9 @@ def save_to_history(status="done"):
     try:
         history = json.loads(HISTORY_FILE.read_text()) if HISTORY_FILE.exists() else []
         entry = {
-            "id": datetime.now().strftime("%Y%m%d_%H%M%S"),
+            # Reuse the admin-assigned render id (linked to a waitlist row) when present,
+            # so the history entry, the waitlist.render_id, and the dashboard all agree.
+            "id": pipeline_state.get("render_id") or datetime.now().strftime("%Y%m%d_%H%M%S"),
             "created_at": datetime.now().isoformat(),
             "book": pipeline_state.get("book", ""),
             "chapter": pipeline_state.get("chapter", ""),
@@ -610,6 +616,86 @@ def get_latest_completed_render():
         if entry.get("status") == "done" and (entry.get("video_url") or "").strip():
             return {**entry, "source": "render_history"}
     return None
+
+
+def get_render_status(render_id):
+    """Return a coarse status string for a render id, or None if unknown.
+
+    Used by the admin dashboard to show each invitee's real render state:
+      - 'rendering' while it's the live in-flight render
+      - 'done' / 'error' / 'stopped' from render_history once it has finished
+    Checks the live pipeline first (history is only written on completion).
+    """
+    if not render_id:
+        return None
+    rid = str(render_id)
+    if str(pipeline_state.get("render_id") or "") == rid:
+        phase = pipeline_state.get("phase")
+        if phase in ("generating_scenes", "generating_media", "rendering"):
+            return "rendering"
+        if phase in ("done", "error", "stopped"):
+            return phase
+    try:
+        history = json.loads(HISTORY_FILE.read_text()) if HISTORY_FILE.exists() else []
+    except Exception:
+        return None
+    for entry in reversed(history):
+        if str(entry.get("id")) == rid:
+            return entry.get("status") or "done"
+    return None
+
+
+def _run_chapter(text, book, chapter, model, voice_id):
+    """Background worker: scripture text -> Claude scenes -> full media pipeline.
+    Mirrors the /api/generate body so the admin 'Render chapter' button reuses
+    the exact same proven path. Errors land in pipeline_state for the status bar."""
+    try:
+        words_target = WORDS_PER_SCENE.get(model, 30)
+        narration_chunks = split_scripture_into_scenes(text, words_target)
+        scenes = generate_image_prompts(narration_chunks, book, chapter)
+        with lock:
+            pipeline_state.update(scenes=scenes,
+                                  message=f"Generated {len(scenes)} scenes — starting media pipeline...")
+            save_state()
+        run_pipeline(scenes, model, voice_id=voice_id)
+    except Exception as e:
+        with lock:
+            pipeline_state.update(phase="error", error=str(e), message=f"Error: {e}")
+            save_state()
+        traceback.print_exc()
+
+
+def start_render_for_chapter(text, book="", chapter="", model="v1.6", voice_id=None, render_id=None):
+    """Kick off a full render (scenes + media) for one chapter in a background
+    thread, callable in-process (the admin 'Render chapter' button).
+
+    Returns (ok: bool, info: dict | error_str). Refuses with a clear message when
+    a render is already running — the pipeline is single-tenant (one at a time).
+    """
+    if not ANTHROPIC_API_KEY:
+        return False, "ANTHROPIC_API_KEY not set"
+    if not FAL_KEY or not JSON2VIDEO_API_KEY:
+        return False, "Render keys missing (FAL_KEY / JSON2VIDEO_API_KEY)"
+    if model not in KLING_MODELS:
+        return False, f"Unknown model '{model}'. Choose from: {', '.join(KLING_MODELS.keys())}"
+    if not (text or "").strip():
+        return False, "No scripture text to render."
+    if pipeline_state["phase"] in ("generating_scenes", "generating_media", "rendering"):
+        busy = f"{pipeline_state.get('book','')} {pipeline_state.get('chapter','')}".strip()
+        return False, f"A render is already running ({busy or 'in progress'}). Wait for it to finish."
+
+    vid = resolve_voice(voice_id)
+    with lock:
+        pipeline_state.update(phase="generating_scenes",
+                              message="Splitting scripture and generating scenes with Claude AI...",
+                              scenes=None, error=None, video_url=None, video_urls=[], processed=[],
+                              book=book, chapter=chapter, model=model, aspect_ratio="16:9",
+                              voice_id=vid, render_id=render_id)
+        save_state()
+    thread = threading.Thread(target=_run_chapter, args=(text, book, chapter, model, vid),
+                              daemon=True)
+    thread.start()
+    return True, {"render_id": render_id, "book": book, "chapter": chapter}
 
 
 # ---------------------------------------------------------------------------

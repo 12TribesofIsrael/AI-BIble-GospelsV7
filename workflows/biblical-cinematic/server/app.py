@@ -206,6 +206,13 @@ class RenderDoneRequest(BaseModel):
     video_url: Optional[str] = None
 
 
+class RenderChapterRequest(BaseModel):
+    # Optional overrides for the admin "Render chapter" button. Defaults match the
+    # pipeline's own default (cheapest Kling tier; default ElevenLabs voice).
+    model: str = "v1.6"
+    voice_id: Optional[str] = None
+
+
 # ── Bible Selector API ────────────────────────────────────────────────────────
 
 @app.get("/api/bible/books")
@@ -2214,6 +2221,16 @@ async def admin_waitlist():
         return JSONResponse(
             {"error": "Supabase not configured — waitlist storage unavailable.",
              "configured": False}, status_code=503)
+    # Enrich each row that has a linked render with its real status (rendering /
+    # done / error) so the dashboard badge reflects reality, not just "render_id set".
+    try:
+        from biblical_pipeline import get_render_status
+        for r in rows:
+            rid = r.get("render_id")
+            if rid:
+                r["render_status"] = get_render_status(str(rid))
+    except Exception as e:
+        print(f"[admin_waitlist] render-status enrich failed: {e}")
     return {"configured": True, "count": len(rows), "signups": rows}
 
 
@@ -2266,6 +2283,62 @@ async def admin_issue_invite(req: InviteIssueRequest):
         "token": token,
         "invite_url": f"{_ANOINTED_BASE_URL}/invite/{token}",
     }
+
+
+@app.post("/admin/invites/{token}/render")
+async def admin_render_chapter(token: str, req: RenderChapterRequest):
+    """Kick off the free-chapter render for a redeemed invitee, in-process.
+
+    Reuses the exact scene-gen + media pipeline that /app uses. The pipeline is
+    single-tenant (one render at a time) → returns 409 if one is already running.
+    Links a render_id to the row immediately so the dashboard badge flips to
+    RENDERING and the status bar (polling /v9/api/status) shows it live.
+    """
+    if not _db_mod.is_enabled():
+        raise HTTPException(status_code=503, detail="Supabase not configured")
+    row = _db_mod.get_invite(token)
+    if row is None:
+        raise HTTPException(status_code=404, detail="Invalid invite token")
+    email = row.get("email") or ""
+    chapter_picked = (row.get("chapter_picked") or "").strip()
+    if not chapter_picked:
+        raise HTTPException(status_code=400,
+                            detail="Invite has no chapter pick yet — user hasn't claimed.")
+
+    # "Genesis 2" -> ("Genesis", "2"); "1 Maccabees 10" -> ("1 Maccabees", "10")
+    book, _sep, chapter = chapter_picked.rpartition(" ")
+    book, chapter = book.strip(), chapter.strip()
+    if not book or not chapter:
+        raise HTTPException(status_code=400,
+                            detail=f"Could not parse chapter pick '{chapter_picked}'.")
+
+    # Same scripture source the /app chapter selector reads from.
+    text = None
+    for b in _BIBLE_DATA:
+        if b["name"] == book:
+            text = b["chapters"].get(chapter)
+            break
+    if not text:
+        raise HTTPException(status_code=404,
+                            detail=f"Scripture text not found for '{chapter_picked}'.")
+
+    render_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+    try:
+        from biblical_pipeline import start_render_for_chapter
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Pipeline unavailable: {e}")
+
+    ok, info = start_render_for_chapter(text, book=book, chapter=chapter,
+                                        model=req.model, voice_id=req.voice_id,
+                                        render_id=render_id)
+    if not ok:
+        code = 409 if "already running" in str(info) else 400
+        raise HTTPException(status_code=code, detail=str(info))
+
+    # Link the render to this invitee so the badge and send-done resolve to them.
+    _db_mod.attach_render(token, render_id)
+    return {"status": "started", "email": email, "chapter": chapter_picked,
+            "render_id": render_id, "model": req.model}
 
 
 @app.post("/admin/invites/{token}/send-done")
