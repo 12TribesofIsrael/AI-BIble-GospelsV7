@@ -1969,8 +1969,9 @@ def _push_lead_to_crm(email: str, source: str,
                 headers={
                     "Authorization": f"Bearer {_CRM_KEY}",
                     "Content-Type": "application/json",
-                    # 24h idempotency so a double-submit doesn't create two contacts
-                    "Idempotency-Key": f"{source}:{name}",
+                    # 24h idempotency so a double-submit doesn't create two contacts.
+                    # CRM only allows [A-Za-z0-9_-:.]; strip the rest (e.g. "@" in emails).
+                    "Idempotency-Key": re.sub(r"[^A-Za-z0-9_:.-]", "-", f"{source}:{name}")[:255],
                 },
                 json={
                     "name": name,
