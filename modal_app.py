@@ -70,6 +70,7 @@ def supabase_keepalive():
     secrets=[
         modal.Secret.from_name("ai-bible-gospels"),
         modal.Secret.from_name("ai-bible-gospels-stripe"),
+        modal.Secret.from_name("bmb-crm-ingest"),
     ],
     volumes={"/data": volume},
     scaledown_window=300,
