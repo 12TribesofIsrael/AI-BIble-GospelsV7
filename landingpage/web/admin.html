@@ -50,6 +50,27 @@
 
     <section id="summary" class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6"></section>
 
+    <!-- Live render status — polls the single global render pipeline (/v9/api/status). -->
+    <section id="render-status" class="bg-gray-900/40 border border-gray-800 rounded-xl p-4 mb-6">
+      <div class="flex items-center justify-between mb-2">
+        <div class="flex items-center gap-2 min-w-0">
+          <span id="rs-dot" class="w-2.5 h-2.5 rounded-full bg-gray-600 shrink-0"></span>
+          <span class="text-sm font-semibold text-gray-200">Render</span>
+          <span id="rs-chapter" class="text-xs text-gray-500 truncate"></span>
+        </div>
+        <span id="rs-phase" class="text-xs uppercase tracking-wider text-gray-500 shrink-0">idle</span>
+      </div>
+      <div class="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
+        <div id="rs-bar" class="h-full bg-amber-500 transition-all duration-500" style="width:0%"></div>
+      </div>
+      <div class="flex items-center justify-between mt-2 gap-3">
+        <span id="rs-msg" class="text-xs text-gray-400 truncate">No active render.</span>
+        <a id="rs-video" href="#" target="_blank" rel="noopener"
+          class="hidden text-xs text-emerald-400 hover:text-emerald-300 underline whitespace-nowrap shrink-0">▶ Open video</a>
+      </div>
+      <p id="rs-error" class="hidden text-xs text-red-400 mt-2 break-words"></p>
+    </section>
+
     <section class="bg-gray-900/40 border border-gray-800 rounded-xl overflow-hidden">
       <table class="w-full text-sm">
         <thead class="bg-gray-900/80 text-gray-400 text-xs uppercase tracking-wider">
@@ -326,8 +347,75 @@
         }
       });
 
+      // ── Live render status bar ────────────────────────────────────────────
+      // One render runs at a time in the pipeline container, so /v9/api/status's
+      // global state IS the active render. Poll fast while active, slow while idle.
+      const RS_ACTIVE = new Set(['generating_scenes', 'generating_media', 'rendering']);
+      let rsTimer = null;
+
+      function applyRenderStatus(d) {
+        const phase = d.phase || 'idle';
+        const msg = d.message || '';
+        const chapter = [d.book, d.chapter].filter(Boolean).join(' ');
+        const dot = $('rs-dot'), bar = $('rs-bar');
+        $('rs-phase').textContent = phase;
+        $('rs-chapter').textContent = chapter ? `· ${chapter}` : '';
+        $('rs-error').classList.add('hidden');
+        $('rs-video').classList.add('hidden');
+
+        let pct = 0;
+        let dotCls = 'w-2.5 h-2.5 rounded-full shrink-0 bg-gray-600';
+        let barCls = 'h-full bg-amber-500 transition-all duration-500';
+
+        if (phase === 'generating_scenes') {
+          pct = 5; dotCls = 'w-2.5 h-2.5 rounded-full shrink-0 bg-amber-500 animate-pulse';
+          $('rs-msg').textContent = msg || 'Generating scenes…';
+        } else if (phase === 'generating_media') {
+          pct = d.total_scenes > 0 ? Math.round((d.current_scene / d.total_scenes) * 80) : 10;
+          dotCls = 'w-2.5 h-2.5 rounded-full shrink-0 bg-amber-500 animate-pulse';
+          $('rs-msg').textContent = msg || `Scene ${d.current_scene}/${d.total_scenes}`;
+        } else if (phase === 'rendering') {
+          pct = 90; dotCls = 'w-2.5 h-2.5 rounded-full shrink-0 bg-amber-500 animate-pulse';
+          $('rs-msg').textContent = msg || 'Assembling final video…';
+        } else if (phase === 'done') {
+          pct = 100; dotCls = 'w-2.5 h-2.5 rounded-full shrink-0 bg-emerald-500';
+          barCls = 'h-full bg-emerald-500 transition-all duration-500';
+          $('rs-msg').textContent = msg || 'Render complete.';
+          const url = d.video_url || (d.video_urls && d.video_urls[0]);
+          if (url) { $('rs-video').href = url; $('rs-video').classList.remove('hidden'); }
+        } else if (phase === 'error') {
+          pct = 100; dotCls = 'w-2.5 h-2.5 rounded-full shrink-0 bg-red-500';
+          barCls = 'h-full bg-red-600 transition-all duration-500';
+          $('rs-msg').textContent = 'Render failed.';
+          $('rs-error').textContent = d.error || 'Unknown error.';
+          $('rs-error').classList.remove('hidden');
+        } else if (phase === 'stopped') {
+          pct = 100; dotCls = 'w-2.5 h-2.5 rounded-full shrink-0 bg-gray-500';
+          barCls = 'h-full bg-gray-600 transition-all duration-500';
+          $('rs-msg').textContent = 'Render stopped.';
+        } else {
+          $('rs-msg').textContent = 'No active render.';
+        }
+
+        dot.className = dotCls;
+        bar.className = barCls;
+        bar.style.width = Math.min(pct, 100) + '%';
+        return phase;
+      }
+
+      async function pollRenderStatus() {
+        let phase = 'idle';
+        try {
+          const r = await fetch('/v9/api/status');
+          if (r.ok) phase = applyRenderStatus(await r.json());
+        } catch (_) { /* keep last shown state on transient network error */ }
+        const delay = RS_ACTIVE.has(phase) ? 2000 : 15000;
+        rsTimer = setTimeout(pollRenderStatus, delay);
+      }
+
       $('refresh').addEventListener('click', load);
       load();
+      pollRenderStatus();
     })();
   </script>
 

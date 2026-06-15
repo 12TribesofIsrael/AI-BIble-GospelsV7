@@ -581,6 +581,37 @@ def save_to_history(status="done"):
         print(f"[history] Failed to save: {e}")
 
 
+def get_latest_completed_render():
+    """Return the most recent completed render with a usable video URL, or None.
+
+    Used by the admin 'Send video-ready' flow to auto-pull the video URL when the
+    Supabase `renders` table has nothing (it's never written by this pipeline).
+    Prefers the live `video_url` if the current render just finished, then falls
+    back to the newest done entry in render_history.json. History is append-only,
+    so the last matching entry is the freshest.
+    """
+    # Freshest source: the render that just finished in this container.
+    if pipeline_state.get("phase") == "done":
+        live_url = (pipeline_state.get("video_url") or "").strip()
+        if live_url:
+            return {
+                "video_url": live_url,
+                "book": pipeline_state.get("book", ""),
+                "chapter": pipeline_state.get("chapter", ""),
+                "status": "done",
+                "source": "pipeline_state",
+            }
+    try:
+        history = json.loads(HISTORY_FILE.read_text()) if HISTORY_FILE.exists() else []
+    except Exception as e:
+        print(f"[history] Failed to read for latest render: {e}")
+        return None
+    for entry in reversed(history):
+        if entry.get("status") == "done" and (entry.get("video_url") or "").strip():
+            return {**entry, "source": "render_history"}
+    return None
+
+
 # ---------------------------------------------------------------------------
 # Background runners
 # ---------------------------------------------------------------------------

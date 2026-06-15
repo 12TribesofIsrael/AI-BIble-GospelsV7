@@ -2274,10 +2274,10 @@ async def admin_send_done(token: str, req: RenderDoneRequest):
 
     Video URL precedence:
       1. req.video_url if provided (admin override — useful for YouTube links etc.)
-      2. Auto-pulled from public.renders.video_url via waitlist.render_id
-    Returns 400 if neither path yields a URL.
-
-    TODO(admin-panel): wire a 'Send done email' button per row that POSTs here.
+      2. Auto-pulled from public.renders.video_url via waitlist.render_id (if linked)
+      3. Latest completed render from render_history.json (the real current path —
+         admin renders the chapter in /app manually, then clicks this).
+    Returns 400 only if all three miss.
     """
     if not _db_mod.is_enabled():
         raise HTTPException(status_code=503, detail="Supabase not configured")
@@ -2293,23 +2293,38 @@ async def admin_send_done(token: str, req: RenderDoneRequest):
         )
 
     video_url = (req.video_url or "").strip()
-    source = "admin_override" if video_url else "auto_renders"
+    source = "admin_override" if video_url else ""
+
+    # 2. Supabase renders table via linked render_id (kept for when that table
+    #    ever gets populated; today nothing writes it, so this usually misses).
     if not video_url:
         render_id = row.get("render_id")
-        if not render_id:
-            raise HTTPException(
-                status_code=400,
-                detail="No render_id linked to this invite. Either trigger a render "
-                       "and attach it, or pass video_url explicitly.",
-            )
-        rec = _db_mod.get_render(str(render_id))
-        if rec is None or not rec.get("video_url"):
-            raise HTTPException(
-                status_code=400,
-                detail="Linked render has no video_url yet — render may still be "
-                       "in progress, or pass video_url explicitly to override.",
-            )
-        video_url = rec["video_url"]
+        if render_id:
+            rec = _db_mod.get_render(str(render_id))
+            if rec and (rec.get("video_url") or "").strip():
+                video_url = rec["video_url"].strip()
+                source = "auto_renders"
+
+    # 3. Fallback to the latest completed render in render_history.json — the
+    #    real path: admin just rendered this chapter in /app, no render_id linked.
+    if not video_url:
+        try:
+            from biblical_pipeline import get_latest_completed_render
+            latest = get_latest_completed_render()
+        except Exception as e:
+            print(f"[admin_send_done] latest-render lookup failed: {e}")
+            latest = None
+        if latest and (latest.get("video_url") or "").strip():
+            video_url = latest["video_url"].strip()
+            source = "latest_render"
+
+    if not video_url:
+        raise HTTPException(
+            status_code=400,
+            detail="No video URL found — no completed render in history and none "
+                   "linked to this invite. Render the chapter in /app first, or "
+                   "paste a video_url to override.",
+        )
 
     _send_render_complete_email(email, chapter, video_url)
     return {
