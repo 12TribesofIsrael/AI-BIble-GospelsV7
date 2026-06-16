@@ -130,6 +130,8 @@ def generate_scenes_from_script(script_text):
         json={
             "model": "claude-sonnet-4-6",
             "max_tokens": 8000,
+            "thinking": {"type": "disabled"},
+            "output_config": {"effort": "low"},
             "messages": [{"role": "user", "content": f"{SCENE_GENERATION_PROMPT}\n\n---\n\nSCRIPT/CONCEPT:\n\n{script_text}"}],
         },
         timeout=120,

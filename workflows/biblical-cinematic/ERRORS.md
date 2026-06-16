@@ -5,6 +5,24 @@ Archive this file when the app reaches full production.
 
 ---
 
+## [2026-06-15] "Generate ALL Sections" → `Unexpected token '<', "<!DOCTYPE"` — single giant Claude call overflowed both the token cap and the proxy timeout
+
+**Symptom:** Generating scenes for a large chapter ("Generate ALL Sections", ~2,252 words) failed in the browser with `Unexpected token '<', "<!DOCTYPE "... is not valid JSON`. The frontend got an HTML page where it expected JSON.
+
+**Root cause (two compounding bugs, same design flaw):** `generate_image_prompts()` made **one** Claude call for *all* scenes (intro + N scripture + outro). For a full chapter that's 75+ scenes in a single request, which broke two ways:
+1. **Token overflow → truncation.** `max_tokens: 8000` couldn't hold the JSON for 36+ scenes. Claude's output was cut off mid-string, so the server's `json.loads()` raised `Unterminated string starting at: line 210 column 22` → HTTPException 500. Confirmed by hitting the **Modal upstream directly** (bypassing Cloudflare) with ~1,081 words: `500 {"detail":"Unterminated string ..."}` after 153s.
+2. **Latency → proxy 524.** The same call ran >100s. Through anointed.app the **Cloudflare Worker proxy** (free tier, ~100s origin-response limit) returns its **524 HTML error page**, which the frontend's `res.json()` choked on → the `<!DOCTYPE` error. (Direct-to-Modal showed the 500; through the proxy you only ever see the HTML 524.)
+
+**Fix (two parts):**
+1. **Batch the Claude calls.** `generate_image_prompts()` now splits scenes into `PROMPT_BATCH_SIZE = 12` per call via `_request_prompt_batch()` (intro on the first batch, outro on the last). Each call's output stays well under 8000 tokens — no truncation. Narration is merged **per batch** so a miscount in one batch can't shift alignment in the next.
+2. **Run generation in the background + poll.** `/v9/api/generate-scenes` now spawns a daemon thread (`_run_scene_generation`), sets `phase="generating_scenes"`, and returns `{"status":"started"}` immediately — the HTTP response no longer blocks for minutes, so it never trips the proxy's 100s limit. The browser polls `/v9/api/status` (new `pollForScenes()` in app.py, 2s interval, 6-min ceiling, tolerant of transient non-JSON and Modal sibling-container idle-without-scenes windows). Mirrors the existing video-pipeline pattern.
+
+**Verified live via anointed.app:** 1,081-word input → `{"status":"started"}` instantly, polled through 202s (well past the 100s CF limit), finished `phase=idle, scenes=38 (intro=1, scripture=36, outro=1)`. The input that previously 500'd/524'd now succeeds.
+
+**Lesson:** Any synchronous endpoint behind the Cloudflare proxy has a hard **~100s wall** — long LLM work must be backgrounded + polled, not awaited in the request. And one-shot "generate N items in a single call" patterns silently break once N grows enough to exceed `max_tokens` — batch them.
+
+---
+
 ## [2026-06-15] Render 404s — hardcoded dated Claude model snapshot hit its retirement date
 
 **Symptom:** Starting a video render failed at scene generation with `⚠ 404 Client Error: Not Found for url: https://api.anthropic.com/v1/messages`. The endpoint URL was correct, so it read like an endpoint/network problem.
@@ -17,6 +35,8 @@ Archive this file when the app reaches full production.
 - `scripts/heaven/generate_heaven.py`
 
 **Lesson:** **Never hardcode dated Claude model snapshots** (`claude-*-YYYYMMDD`) — they retire on a published schedule and 404 with no code change on your side. Use the bare alias (`claude-sonnet-4-6`, `claude-opus-4-8`), which doesn't carry a hard retirement date. Requires a **redeploy** to take effect on Modal (model ID read at request time, but warm containers run old code).
+
+**Follow-on (same day): read timeout after the model swap.** Once the 404 was fixed, the next render failed with `HTTPSConnectionPool(...): Read timed out. (read timeout=120)`. **Root cause:** Sonnet 4.6 supports adaptive thinking and **defaults to `effort: high`** — unlike the old dated Sonnet 4, which sent no thinking config and answered fast. The model now "thought" before generating scenes, pushing the call past the 120s `requests` timeout. **Fix:** added `"thinking": {"type": "disabled"}` + `"output_config": {"effort": "low"}` to every scene-gen payload (these are raw-HTTP `requests.post` calls, so the fields go straight into the JSON body — `effort` is GA on Sonnet 4.6, no beta header) and bumped the production call's timeout 120→300s. Scene-gen is structured prompt generation, not reasoning, so disabling thinking matches the old Sonnet-4 behavior with no quality loss. Verified live: `/v9/api/generate-scenes` went from >120s timeout to **33s**. **Lesson:** when migrating to a 4.6+ model, explicitly set thinking/effort for latency-sensitive structured-output calls — the new default-`high` effort can silently blow past existing timeouts.
 
 ---
 

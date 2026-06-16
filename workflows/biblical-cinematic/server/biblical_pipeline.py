@@ -371,10 +371,21 @@ def split_scripture_into_scenes(text, target_words_per_scene=30):
 # ---------------------------------------------------------------------------
 # Claude — generate image prompts from narration chunks
 # ---------------------------------------------------------------------------
-def generate_image_prompts(narration_chunks, book="", chapter=""):
-    """Send narration chunks to Claude, get back imagePrompt/motion/lighting per scene plus intro/outro."""
+# How many scripture scenes to request per Claude call. One giant call for a full
+# chapter (75+ scenes) overflows max_tokens (truncated → invalid JSON → 500) AND
+# runs past the Cloudflare proxy's ~100s limit (524 HTML page). Batching keeps each
+# call's output well under the token cap and each call short. 12 scenes ≈ <2K output
+# tokens, comfortably inside the 8000 cap.
+PROMPT_BATCH_SIZE = 12
+
+
+def _request_prompt_batch(chunks, include_intro, include_outro, book="", chapter=""):
+    """One Claude call for a slice of scripture scenes (+ intro on the first batch,
+    + outro on the last). Returns the parsed scenes with word-for-word narration
+    already merged onto the scripture scenes in THIS batch (localizes any miscount
+    so a wrong count in one batch can't shift narration alignment in the next)."""
     numbered = "\n".join(
-        f"Scene {i+1} narration: \"{chunk}\"" for i, chunk in enumerate(narration_chunks)
+        f"Scene {i+1} narration: \"{chunk}\"" for i, chunk in enumerate(chunks)
     )
     context_line = ""
     if book:
@@ -382,20 +393,33 @@ def generate_image_prompts(narration_chunks, book="", chapter=""):
         if chapter:
             context_line += f", CHAPTER: {chapter}"
 
+    parts = []
+    breakdown = []
+    if include_intro:
+        parts.append("an INTRO scene")
+        breakdown.append("1 intro")
+    parts.append(f"imagePrompt/motion/lighting for each of these {len(chunks)} scripture scenes")
+    breakdown.append(f"{len(chunks)} scripture")
+    if include_outro:
+        parts.append("an OUTRO scene")
+        breakdown.append("1 outro")
+    total = len(chunks) + (1 if include_intro else 0) + (1 if include_outro else 0)
+    intro_note = "" if include_intro else "\nDo NOT generate an intro scene in this batch."
+    outro_note = "" if include_outro else "\nDo NOT generate an outro scene in this batch."
+
     user_msg = (
         f"{IMAGE_PROMPT_SYSTEM}\n\n---{context_line}\n\n"
-        f"Generate an INTRO scene, then imagePrompt/motion/lighting for each of these "
-        f"{len(narration_chunks)} scripture scenes, then an OUTRO scene.\n\n"
-        f"Total scenes in your response: {len(narration_chunks) + 2} "
-        f"(1 intro + {len(narration_chunks)} scripture + 1 outro)\n\n{numbered}"
+        f"Generate {', then '.join(parts)}.{intro_note}{outro_note}\n\n"
+        f"Total scenes in your response: {total} ({' + '.join(breakdown)})\n\n{numbered}"
     )
 
     resp = requests.post(
         ANTHROPIC_URL,
         headers={"x-api-key": ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "Content-Type": "application/json"},
         json={"model": "claude-sonnet-4-6", "max_tokens": 8000,
+              "thinking": {"type": "disabled"}, "output_config": {"effort": "low"},
               "messages": [{"role": "user", "content": user_msg}]},
-        timeout=120,
+        timeout=300,
     )
     resp.raise_for_status()
     content = resp.json()["content"][0]["text"]
@@ -405,17 +429,31 @@ def generate_image_prompts(narration_chunks, book="", chapter=""):
         content = content.split("```")[1].split("```")[0]
     scenes = json.loads(content.strip())["scenes"]
 
-    # Merge narration: intro/outro have their own narration from Claude,
-    # scripture scenes get word-for-word narration from chunks
-    scripture_idx = 0
+    # Word-for-word narration for scripture scenes in this batch; intro/outro keep
+    # Claude's own narration.
+    idx = 0
     for scene in scenes:
-        scene_type = scene.get("type", "scripture")
-        if scene_type == "scripture":
-            scene["narration"] = narration_chunks[scripture_idx] if scripture_idx < len(narration_chunks) else ""
-            scripture_idx += 1
-        # intro and outro already have "narration" from Claude's JSON
-
+        if scene.get("type", "scripture") == "scripture":
+            scene["narration"] = chunks[idx] if idx < len(chunks) else ""
+            idx += 1
     return scenes
+
+
+def generate_image_prompts(narration_chunks, book="", chapter=""):
+    """Send narration chunks to Claude in bounded batches, get back
+    imagePrompt/motion/lighting per scene plus a leading intro and trailing outro."""
+    n = len(narration_chunks)
+    if n == 0:
+        return []
+    all_scenes = []
+    for start in range(0, n, PROMPT_BATCH_SIZE):
+        batch = narration_chunks[start:start + PROMPT_BATCH_SIZE]
+        include_intro = (start == 0)
+        include_outro = (start + PROMPT_BATCH_SIZE >= n)
+        all_scenes.extend(
+            _request_prompt_batch(batch, include_intro, include_outro, book, chapter)
+        )
+    return all_scenes
 
 
 # ---------------------------------------------------------------------------
@@ -864,34 +902,48 @@ def run_fix_scenes(fixes, processed, model="v1.6", voice_id=None):
 biblical_router = APIRouter()
 
 
+def _run_scene_generation(text, words_target, book, chapter):
+    """Background worker: split scripture + batch Claude calls → scenes. Runs off the
+    request thread so a long full-chapter generation (many batches, >100s) doesn't
+    block the HTTP response and trip the Cloudflare proxy's ~100s timeout. The browser
+    polls /api/status for the result."""
+    try:
+        narration_chunks = split_scripture_into_scenes(text, words_target)
+        scenes = generate_image_prompts(narration_chunks, book, chapter)
+        with lock:
+            pipeline_state.update(phase="idle", scenes=scenes, message=f"Generated {len(scenes)} scenes")
+            save_state()
+    except Exception as e:
+        with lock:
+            pipeline_state.update(phase="error", error=str(e), message="Scene generation failed")
+            save_state()
+
+
 @biblical_router.post("/api/generate-scenes")
 @limiter.limit(MEDIUM_LIMIT)
 async def api_generate_scenes(request: Request, body: BiblicalGenerateInput):
-    """Step 1: Split scripture + Claude AI → return scenes for user review. No media generation."""
+    """Step 1: Split scripture + Claude AI → scenes for user review. No media generation.
+    Runs in the background and returns immediately; the browser polls /api/status."""
     if not ANTHROPIC_API_KEY:
         raise HTTPException(400, "ANTHROPIC_API_KEY not set")
     if pipeline_state["phase"] in ("generating_scenes", "generating_media", "rendering"):
         raise HTTPException(409, "Pipeline already running")
 
-    try:
-        with lock:
-            pipeline_state.update(phase="generating_scenes", message="Splitting scripture and generating scene visuals with Claude AI...",
-                                  scenes=None, error=None, video_url=None, video_urls=[], processed=[],
-                                  book=body.book, chapter=body.chapter, model=body.model, aspect_ratio=body.aspect_ratio)
+    with lock:
+        pipeline_state.update(phase="generating_scenes", message="Splitting scripture and generating scene visuals with Claude AI...",
+                              scenes=None, error=None, video_url=None, video_urls=[], processed=[],
+                              book=body.book, chapter=body.chapter, model=body.model, aspect_ratio=body.aspect_ratio)
+        save_state()
 
-        words_target = WORDS_PER_SCENE.get(body.model, 30)
-        narration_chunks = split_scripture_into_scenes(body.text, words_target)
-        scenes = generate_image_prompts(narration_chunks, body.book, body.chapter)
-
-        with lock:
-            pipeline_state.update(phase="idle", scenes=scenes, message=f"Generated {len(scenes)} scenes")
-            save_state()
-
-        return {"scenes": scenes}
-    except Exception as e:
-        with lock:
-            pipeline_state.update(phase="error", error=str(e))
-        raise HTTPException(500, str(e))
+    words_target = WORDS_PER_SCENE.get(body.model, 30)
+    log_event(request, "biblical_generate_scenes", model=body.model, words=len(body.text.split()))
+    thread = threading.Thread(
+        target=_run_scene_generation,
+        args=(body.text, words_target, body.book, body.chapter),
+        daemon=True,
+    )
+    thread.start()
+    return {"status": "started"}
 
 
 @biblical_router.post("/api/generate-video")

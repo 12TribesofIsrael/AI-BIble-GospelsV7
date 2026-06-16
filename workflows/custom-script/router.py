@@ -260,6 +260,7 @@ def generate_scenes_from_script(script_text):
         ANTHROPIC_URL,
         headers={"x-api-key": ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "Content-Type": "application/json"},
         json={"model": "claude-sonnet-4-6", "max_tokens": 16000,
+              "thinking": {"type": "disabled"}, "output_config": {"effort": "low"},
               "messages": [{"role": "user", "content": f"{SCENE_GENERATION_PROMPT}\n\n---\n\nSCRIPT/CONCEPT:\n\n{script_text}"}]},
         timeout=300,
     )

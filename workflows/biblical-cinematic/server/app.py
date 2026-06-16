@@ -1621,12 +1621,16 @@ LANDING_PAGE = """<!DOCTYPE html>
         });
 
         if (!res.ok) {
-          const err = await res.json();
-          throw new Error(err.detail || 'Failed to generate scenes.');
+          let detail = 'Failed to generate scenes.';
+          try { const err = await res.json(); detail = err.detail || detail; } catch (_) {}
+          throw new Error(detail);
         }
 
-        const data = await res.json();
-        v9Scenes = data.scenes || [];
+        // Scene generation now runs in the background — a full chapter is split
+        // into batched Claude calls and can take a few minutes, which would
+        // otherwise trip the proxy's ~100s request timeout (524 HTML page). Poll
+        // /api/status until the scenes are ready.
+        v9Scenes = await pollForScenes();
         renderV9Scenes();
         setStep('2b');
       } catch (e) {
@@ -1636,6 +1640,29 @@ LANDING_PAGE = """<!DOCTYPE html>
         btn.disabled = false;
         if (sibling) sibling.disabled = false;
       }
+    }
+
+    // Poll /api/status until background scene generation finishes. Returns the
+    // scenes array, or throws on error / timeout. Tolerant of transient non-JSON
+    // proxy responses and brief idle-without-scenes windows on Modal (a poll can
+    // momentarily hit a sibling container before in-memory state propagates).
+    async function pollForScenes() {
+      const deadline = Date.now() + 6 * 60 * 1000;  // 6 min ceiling
+      while (Date.now() < deadline) {
+        await new Promise(r => setTimeout(r, 2000));
+        let st;
+        try {
+          const r = await fetch('/v9/api/status');
+          if (!r.ok) continue;
+          st = await r.json();
+        } catch (_) {
+          continue;  // network blip or transient non-JSON — keep polling
+        }
+        if (st.phase === 'error') throw new Error(st.error || 'Scene generation failed.');
+        if (st.scenes && st.scenes.length) return st.scenes;
+        // still generating, or idle-without-scenes on a sibling container — wait
+      }
+      throw new Error('Scene generation timed out. Please try again.');
     }
 
     async function approveText() {
