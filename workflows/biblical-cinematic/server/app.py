@@ -1978,8 +1978,9 @@ def _resend_send(to: list[str], subject: str, html: str, reply_to: Optional[str]
         print(f"[waitlist] Resend send to {to} failed: {e}")
 
 
-_CRM_BASE = os.environ.get("BMB_CRM_INGEST_URL", "").rstrip("/")
-_CRM_KEY = os.environ.get("BMB_CRM_API_KEY", "")
+_CRM_BASE = os.environ.get("BMB_CRM_BASE_URL", os.environ.get("BMB_CRM_INGEST_URL", "")).rstrip("/")
+_CRM_KEY = os.environ.get("BMB_CRM_API_KEY", "")  # legacy; the hosted-form endpoint needs no key
+_CRM_FORM_ID = os.environ.get("BMB_CRM_FORM_ID", "")  # Anointed hosted form (fires Speed-to-Lead)
 
 
 def _push_lead_to_crm(email: str, source: str,
@@ -1987,11 +1988,13 @@ def _push_lead_to_crm(email: str, source: str,
     """Fire-and-forget: mirror a signup into the BMB LeadStack CRM.
 
     Swallows all errors so a CRM outage never affects the signup flow. Skips
-    silently when the CRM env vars aren't configured. Email-only signups land
-    as contacts (no pipeline stage) — in the database and reachable, but not on
-    the sales board.
+    silently when the CRM env vars aren't configured. Posts to the sub-account's
+    hosted form (not /api/v1/contacts) so the CRM also fires Speed-to-Lead — the
+    instant marketing follow-up — and creates the pipeline deal. The form applies
+    its own tags/source/stage, so those args are no longer sent (kept for
+    signature back-compat). The site's own beta/waitlist email is unaffected.
     """
-    if not _CRM_BASE or not _CRM_KEY:
+    if not _CRM_BASE or not _CRM_FORM_ID:
         return
     name = (email or "").strip().lower()
     if not name:
@@ -1999,25 +2002,13 @@ def _push_lead_to_crm(email: str, source: str,
     try:
         with httpx.Client(timeout=8.0) as client:
             r = client.post(
-                f"{_CRM_BASE}/api/v1/contacts",
-                headers={
-                    "Authorization": f"Bearer {_CRM_KEY}",
-                    "Content-Type": "application/json",
-                    # 24h idempotency so a double-submit doesn't create two contacts.
-                    # CRM only allows [A-Za-z0-9_-:.]; strip the rest (e.g. "@" in emails).
-                    "Idempotency-Key": re.sub(r"[^A-Za-z0-9_:.-]", "-", f"{source}:{name}")[:255],
-                },
-                json={
-                    "name": name,
-                    "email": name,
-                    "source": "website-form",
-                    "tags": ["anointed", source],
-                    "pipeline_stage": pipeline_stage,
-                },
+                f"{_CRM_BASE}/api/forms/{_CRM_FORM_ID}/submit",
+                headers={"Content-Type": "application/json"},
+                json={"values": {"name": name, "email": name}},
             )
             r.raise_for_status()
     except Exception as e:
-        print(f"[crm] ingest for {email} failed: {e}")
+        print(f"[crm] form submit for {email} failed: {e}")
 
 
 def _send_waitlist_notification(email: str, ip: str, source: str) -> None:
