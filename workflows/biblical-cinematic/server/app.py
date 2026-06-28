@@ -1978,9 +1978,14 @@ def _resend_send(to: list[str], subject: str, html: str, reply_to: Optional[str]
         print(f"[waitlist] Resend send to {to} failed: {e}")
 
 
-_CRM_BASE = os.environ.get("BMB_CRM_BASE_URL", os.environ.get("BMB_CRM_INGEST_URL", "")).rstrip("/")
-_CRM_KEY = os.environ.get("BMB_CRM_API_KEY", "")  # legacy; the hosted-form endpoint needs no key
-_CRM_FORM_ID = os.environ.get("BMB_CRM_FORM_ID", "")  # Anointed hosted form (fires Speed-to-Lead)
+# Base + form id are public (the hosted-form endpoint takes no API key — the form
+# id IS the capability), so they ship as defaults and work without any Modal secret
+# config. Override via env if the CRM moves or the Anointed form id changes.
+_CRM_BASE = os.environ.get(
+    "BMB_CRM_BASE_URL",
+    os.environ.get("BMB_CRM_INGEST_URL", "https://bmb-crm.vercel.app"),
+).rstrip("/")
+_CRM_FORM_ID = os.environ.get("BMB_CRM_FORM_ID", "cNsPnGzNYUB8GAEvbWpX")  # Anointed hosted form (fires Speed-to-Lead)
 
 
 def _push_lead_to_crm(email: str, source: str,
@@ -2171,15 +2176,20 @@ async def api_waitlist_signup(request: Request, req: WaitlistRequest):
     if result == "duplicate":
         return {"status": "already_signed_up",
                 "message": "You're already on the list — we'll be in touch."}
-    if result == "error":
-        raise HTTPException(status_code=500, detail="Something went wrong. Please try again.")
-    if result == "unconfigured":
-        # No Supabase wired up — still notify admin so signups aren't lost
-        print(f"[waitlist] Supabase unconfigured — signup not persisted: {email}")
+    if result in ("error", "unconfigured"):
+        # Supabase is down/unconfigured — DON'T fail the signup. The CRM is the
+        # system of record now, so we still send the welcome, notify the owner,
+        # and push the lead into the CRM below. (Lead *capture* must never depend
+        # on Supabase — a paused DB once silently 500'd every signup and lost
+        # them all.) The lead just isn't persisted to Supabase on this request;
+        # the invite/render flow, which needs Supabase, will pick up once it's
+        # restored.
+        print(f"[waitlist] Supabase insert '{result}' — proceeding without DB persistence: {email}")
 
-    _send_waitlist_notification(email, ip, "landing-page")
-    _send_signer_confirmation(email)
-    _push_lead_to_crm(email, "landing-page")
+    # Owner notification is unified through the CRM now (Speed-to-Lead owner-notify
+    # → bmbaiautomation@gmail.com), so we no longer fire Anointed's own admin email.
+    _send_signer_confirmation(email)            # branded welcome to the signer (kept — brand voice)
+    _push_lead_to_crm(email, "landing-page")    # CRM contact + deal + unified owner-notify
     return {"status": "ok",
             "message": "You're on the list. We'll send your private link soon."}
 
