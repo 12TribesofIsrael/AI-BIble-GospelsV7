@@ -169,22 +169,27 @@ for item in items:
 | [workflows/biblical-cinematic/n8n/v8.0-kling.json](workflows/biblical-cinematic/n8n/v8.0-kling.json) | **v8.0 Kling workflow** — FLUX + Kling AI video motion (testing) |
 | [workflows/biblical-cinematic/templates/v7-ken-burns.json](workflows/biblical-cinematic/templates/v7-ken-burns.json) | v7.2 production template — 20 scenes, Ken Burns, proven working baseline |
 | [workflows/biblical-cinematic/templates/v8-kling.json](workflows/biblical-cinematic/templates/v8-kling.json) | **v8.0 Kling template** — 20 scenes with video elements (testing) |
-| [workflows/biblical-cinematic/scripts/post_produce.py](workflows/biblical-cinematic/scripts/post_produce.py) | FFmpeg post-production — concat intro/outro, overlay logo, mix music |
+| [workflows/biblical-cinematic/scripts/post_produce.py](workflows/biblical-cinematic/scripts/post_produce.py) | FFmpeg post-production — wraps a video with a merged intro/outro brand clip (`assets/intro_outro.mp4`, split via `--split`, default 26s) + logo watermark on the main video only. No-arg = auto-picks newest video in `postproduction/`. Auto-matches source resolution. |
 | [workflows/biblical-cinematic/scripts/batch_post_produce.py](workflows/biblical-cinematic/scripts/batch_post_produce.py) | Batch mode — process all videos in output/raw/ at once |
 | [workflows/biblical-cinematic/scripts/upload_youtube.py](workflows/biblical-cinematic/scripts/upload_youtube.py) | YouTube uploader — OAuth2, auto-generates title/description/thumbnail, uploads as unlisted |
-| [workflows/biblical-cinematic/assets/](workflows/biblical-cinematic/assets/) | Drop-in folder for logo.png, intro.mp4, outro.mp4, music/ |
+| [workflows/biblical-cinematic/assets/](workflows/biblical-cinematic/assets/) | Post-production assets: `intro_outro.mp4` (merged intro+outro brand clip) + `logo1.png` (watermark). Replace `intro_outro.mp4` to change branding. |
 
 ### Post-Production (CLI / `add-covers` skill)
 > The web-app **Step 4** panel was removed on 2026-06-06 when the app went public (it needs local FFmpeg + filesystem access, which don't exist on Modal). Run it locally from the CLI or the `add-covers` skill instead.
 
+**Model:** ONE merged brand clip (`assets/intro_outro.mp4`) holds both intro + outro; a single `--split` point (default **26s**) decides where intro ends / outro begins. Final layout: `brand[0..split]` → `your video (+ logo)` → `brand[split..end]`. The logo watermark goes on the **main video only** — the brand clip is already branded, so watermarking it again double-logos.
+
 ```bash
-# Single video:
+# Drop-and-run: auto-picks the NEWEST video in postproduction/ and wraps it
+python workflows/biblical-cinematic/scripts/post_produce.py
+
+# Explicit input:
 python workflows/biblical-cinematic/scripts/post_produce.py output/raw/video.mp4
 
 # Batch — all videos in output/raw/:
 python workflows/biblical-cinematic/scripts/batch_post_produce.py
 ```
-Options: `--width 3840` (for 4K, default 1920)
+Options: `--split 30` (move the intro/outro seam), `--width 1920` (force 1080p; default = **match source resolution**, no upscaling), `--no-logo`. To change the intro/outro, replace `assets/intro_outro.mp4`.
 
 ### YouTube Upload (CLI / `movie-director` skill)
 > The web-app **Step 5** panel was removed on 2026-06-06 when the app went public. Run it locally from the CLI or the `movie-director` skill instead.
