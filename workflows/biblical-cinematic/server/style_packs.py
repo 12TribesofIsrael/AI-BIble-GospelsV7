@@ -44,7 +44,17 @@ ETHNICITY_RULES = """CHARACTER ETHNICITY RULES (CRITICAL):
 - PERSIANS / MEDES: Olive-brown skin. Ornate Persian robes.
 - PHILISTINES / CANAANITES: Mediterranean/Levantine appearance. Bronze armor, distinctive garments.
 - For scenes with MULTIPLE nations, depict EACH character according to their own nation's ethnicity.
-- CRITICAL: Israelites = Black Hebrew Israelites. All other nations = their own historical ethnicity."""
+- CRITICAL: Israelites = Black Hebrew Israelites. All other nations = their own historical ethnicity.
+- SAY IT EXPLICITLY, EVERY TIME. Naming the group is NOT enough — image models drift pale when
+  skin tone is left implied. Any prompt containing an Israelite/Hebrew figure (including Christ,
+  the disciples, a shepherd, a crowd, a child) MUST literally spell out the skin tone and the
+  hair, e.g. "deeply melanated dark brown skin" plus "natural Afro-textured hair" (locs, coils,
+  braids, twists, or a head wrap). This applies to figures seen from behind, in silhouette, at a
+  distance, or in a wide shot. Never write "a man in robes" and assume the ethnicity carries.
+- WATCH THE BACKLIGHT. The drift clusters on heavily backlit "divine glow" hero shots — arms
+  raised, sun behind the head, golden light blowing out the face. When a scene is lit that way,
+  state that the divine light must NOT wash out or lighten the skin: keep the face in warm
+  frontal fill, rich dark brown skin clearly readable, glow behind rather than across the face."""
 
 
 STYLE_PACKS = {
@@ -255,7 +265,16 @@ STYLE_PACKS = {
             "IMPORTANT: scripture text itself is NEVER paraphrased, simplified, or reworded — "
             "the verses stay exactly as given."
         ),
+        # The skin-tone guard is deliberate and pack-specific. Stylized animation
+        # drifts pale harder than photoreal does — a kids render produced a
+        # light-skinned Christ on 2026-07-26 despite the prompt rules. The kids cast
+        # is Israelite essentially always, so a blanket guard is safe here in a way
+        # it would NOT be for the cinematic/epic packs, which legitimately depict
+        # Caucasian Romans and Mediterranean Greeks. If a kids story ever needs a
+        # Roman, drop this clause for that render rather than weakening the rule.
         "negative_prompt": (
+            "light skin, pale skin, white skin, fair complexion, caucasian, european features, "
+            "blonde hair, straight hair, red hair, blue eyes, whitewashed, "
             "photorealistic, photograph, live action, realistic skin pores, hyper-realistic, "
             "gore, blood, wounds, corpse, weapon, violence, horror, scary, menacing, creepy, "
             "uncanny valley, dark grim, harsh shadows, desaturated, deformed hands, extra fingers, "
