@@ -216,9 +216,24 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         h = int(t // 3600); m = int((t % 3600) // 60); s = t % 60
         return f"{h:d}:{m:02d}:{s:05.2f}"
 
-    lines = []
-    for i in range(0, len(timeline_words), per_line):
-        lines.append(timeline_words[i:i + per_line])
+    # Group into caption lines. A fixed every-N-words chop reads badly: it runs
+    # straight through full stops and across scene cuts, so a line can end up as
+    # "world. Amen. Learn it," — the tail of one verse glued to the head of the
+    # next scene's teaching. Break on sentence-ending punctuation and on scene
+    # changes as well as on length.
+    SENTENCE_END = (".", "!", "?", ":", ";", '."', '?"', '!"')
+    lines, current = [], []
+    for idx, w in enumerate(timeline_words):
+        current.append(w)
+        prev_scene = w.get("scene")
+        next_scene = timeline_words[idx + 1].get("scene") if idx + 1 < len(timeline_words) else None
+        ends_sentence = w["word"].endswith(SENTENCE_END)
+        scene_changes = next_scene is not None and next_scene != prev_scene
+        if len(current) >= per_line or ends_sentence or scene_changes:
+            lines.append(current)
+            current = []
+    if current:
+        lines.append(current)
 
     events = []
     for group in lines:
@@ -326,7 +341,7 @@ def assemble(scenes, voice_id, aspect_ratio="16:9", style=DEFAULT_STYLE,
         parts.append(_conform_scene(clip, audio, target, width, height, tmp / f"s{i}_part.mp4"))
 
         for w in words:
-            timeline.append({"word": w["word"],
+            timeline.append({"word": w["word"], "scene": i,
                              "start": clock + w["start"],
                              "end": min(clock + w["end"], clock + target)})
         clock += target
