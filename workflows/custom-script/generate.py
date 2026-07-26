@@ -22,7 +22,19 @@ import time
 import requests
 from dotenv import find_dotenv, load_dotenv
 
+# Style packs live with the server module; add it to the path so the CLI shares
+# the exact same audience definitions as the web app (one source of truth).
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                "..", "biblical-cinematic", "server"))
+from style_packs import (  # noqa: E402
+    DEFAULT_STYLE, ETHNICITY_RULES, apply_subtitle_style, resolve_style,
+)
+
 load_dotenv(find_dotenv())
+
+# Set once from --style in main(); every stage reads it. The CLI runs one video
+# per process, so a module-level pack is simpler than threading it through.
+ACTIVE_PACK = resolve_style(DEFAULT_STYLE)
 
 FAL_KEY = os.getenv("FAL_KEY")
 JSON2VIDEO_API_KEY = os.getenv("JSON2VIDEO_API_KEY")
@@ -54,51 +66,49 @@ POST_PRODUCE_SCRIPT = os.path.join(
     os.path.dirname(__file__), "..", "biblical-cinematic", "scripts", "post_produce.py"
 )
 
-SCENE_GENERATION_PROMPT = """You are a cinematic video production expert for AI Bible Gospels — a channel revealing the hidden identity of the 12 Tribes of Israel through Scripture, history, and prophecy.
+def scene_generation_prompt(pack) -> str:
+    """Build the CLI system prompt for a style pack (shared defs in style_packs.py).
+
+    `cinematic` reproduces the original CLI prompt; `epic` and `kids` swap the
+    visual + narration language. Ethnicity rules are fixed for every pack.
+    """
+    extra = "\n" + pack["extra_guidelines"] if pack["extra_guidelines"] else ""
+    narration_note = "\n\n" + pack["narration_note"] if pack["narration_note"] else ""
+    return f"""You are a {pack['director_role']} for AI Bible Gospels — a channel revealing the hidden identity of the 12 Tribes of Israel through Scripture, history, and prophecy.
 
 BRAND STYLE:
-- Dark, dramatic backgrounds with golden divine light
-- Cinematic, reverent, powerful tone
-- Photorealistic ancient biblical settings
+{pack['brand_style']}
 
-CHARACTER ETHNICITY RULES (CRITICAL):
-- ISRAELITES / HEBREWS: Black Hebrew Israelites with rich, deeply melanated dark skin. Natural Afro-textured hair: locs, braids, twists, afros, or traditional head wraps. Traditional Hebrew robes, garments with tzitzit fringes, priestly vestments.
-- ROMANS: Caucasian with light skin. Roman armor, togas, military regalia.
-- GREEKS / MACEDONIANS: Mediterranean olive skin. Hellenistic armor, robes, classical styling.
-- EGYPTIANS: Brown skin. Traditional Egyptian garments and headdress.
-- PERSIANS / MEDES: Olive-brown skin. Ornate Persian robes.
-- PHILISTINES / CANAANITES: Mediterranean/Levantine appearance. Bronze armor, distinctive garments.
-- For scenes with MULTIPLE nations, depict EACH character according to their own nation's ethnicity.
-- CRITICAL: Israelites = Black Hebrew Israelites. All other nations = their own historical ethnicity.
+{ETHNICITY_RULES}{pack['ethnicity_extra']}
 
 YOUR TASK:
-Read the script/concept below and break it into cinematic scenes for video production. You are NOT narrating it word-for-word — you are a creative director interpreting the concept into powerful, cinematic narration and visuals.
+Read the script/concept below and break it into scenes for video production. You are NOT narrating it word-for-word — you are a creative director interpreting the concept into powerful narration and visuals.
 
 For each scene, create:
-1. **narration**: Your own cinematic narration inspired by the script (not word-for-word copy). Write powerful, revelatory prose that captures the spirit and message. Keep each scene's narration between 20-60 words.
-2. **imagePrompt**: Extremely detailed visual description for AI image generation. Include character ethnicity per rules above, clothing details, setting, camera angle, atmosphere. End with "photorealistic, cinematic, 8K detail".
-3. **motion**: Camera movement description for video animation (zoom, pan, tilt, pull back, tracking shot, etc.). Vary angles — never repeat the same motion twice in a row.
-4. **lighting**: Specific dramatic lighting for the scene (golden hour, divine shaft of light, torch-lit darkness, moonlit, etc.).
+1. **narration**: Your own narration inspired by the script (not word-for-word copy). Write prose that captures the spirit and message. Keep each scene's narration between 20-60 words.
+2. **imagePrompt**: Extremely detailed visual description for AI image generation. Include character ethnicity per rules above, clothing details, setting, camera angle, atmosphere. End with "{pack['image_suffix_custom']}". {pack['forbidden_line']}
+3. **motion**: {pack['motion_note']}
+4. **lighting**: {pack['lighting_note']}
 
 GUIDELINES:
 - Create as many scenes as the content naturally needs (don't pad, don't compress)
 - Vary camera angles: close-up → wide shot → medium → aerial → over-shoulder
-- Vary lighting: golden divine light, torch-lit darkness, moonlit night, storm clouds, sunrise
-- Make narration powerful and revelatory — this is awakening content
-- Each scene should be visually distinct from the one before it
-- For channel branding scenes (subscribe, logo, etc.), describe the visual elements cinematically
+- Vary lighting: {pack['lighting_examples']}
+{pack['script_tone_line']}
+- Each scene should be visually distinct from the one before it{extra}
+- For channel branding scenes (subscribe, logo, etc.), describe the visual elements in this style{narration_note}
 
 Return ONLY valid JSON in this exact format:
-{
+{{
   "scenes": [
-    {
+    {{
       "narration": "...",
       "imagePrompt": "...",
       "motion": "...",
       "lighting": "..."
-    }
+    }}
   ]
-}"""
+}}"""
 
 
 def generate_scenes_from_script(script_text):
@@ -119,7 +129,7 @@ def generate_scenes_from_script(script_text):
             "messages": [
                 {
                     "role": "user",
-                    "content": f"{SCENE_GENERATION_PROMPT}\n\n---\n\nSCRIPT/CONCEPT:\n\n{script_text}",
+                    "content": f"{scene_generation_prompt(ACTIVE_PACK)}\n\n---\n\nSCRIPT/CONCEPT:\n\n{script_text}",
                 }
             ],
         },
@@ -166,10 +176,16 @@ def generate_image(scene, index, total, lora_url=None, lora_trigger=None, lora_s
         # rare token that biases the model toward the trained look.
         prompt = f"{lora_trigger} {prompt}"
 
+    # Belt-and-braces: if Claude ignored the style instruction, the suffix still
+    # lands on the prompt so FLUX renders in the right medium.
+    if ACTIVE_PACK["image_suffix_custom"].split(",")[0].strip().lower() not in prompt.lower():
+        prompt += f", {ACTIVE_PACK['image_suffix_custom']}"
+
     if lora_url:
         endpoint = FLUX_LORA_URL
         payload = {
             "prompt": prompt,
+            "negative_prompt": ACTIVE_PACK["negative_prompt"],
             "image_size": "landscape_16_9",
             "num_inference_steps": 28,
             "num_images": 1,
@@ -179,6 +195,7 @@ def generate_image(scene, index, total, lora_url=None, lora_trigger=None, lora_s
         endpoint = FLUX_URL
         payload = {
             "prompt": prompt,
+            "negative_prompt": ACTIVE_PACK["negative_prompt"],
             "image_size": "landscape_16_9",
             "num_inference_steps": 28,
             "num_images": 1,
@@ -231,7 +248,8 @@ def generate_video(image_url, scene, index, total, kling_model="v3.0"):
         "image_url": image_url,
         "prompt": scene.get("motion", "Slow cinematic camera movement"),
         "duration": model_cfg["duration"],
-        "cfg_scale": 0.5,
+        "cfg_scale": ACTIVE_PACK["cfg_scale"],
+        "negative_prompt": ACTIVE_PACK["kling_negative"],
     }
 
     backoff_seconds = [30, 90, 180]
@@ -283,6 +301,7 @@ def build_json2video_payload(scenes_data, voice_id=None):
         "shadow-offset": 6,
         "max-words-per-line": 4,
     }
+    subtitle_settings = apply_subtitle_style(subtitle_settings, ACTIVE_PACK)
 
     scenes = []
     for i, s in enumerate(scenes_data, 1):
@@ -370,9 +389,19 @@ def poll_json2video(project_id):
 
 
 def run_post_produce(video_url):
-    """Download the video and run the existing post_produce.py script."""
+    """Run post_produce.py against a finished video.
+
+    Accepts a URL (JSON2Video path) or a local file path (local assembler path) —
+    the local assembler hands back a path on disk, not a download link.
+    """
     os.makedirs("output", exist_ok=True)
     raw_path = os.path.join("output", "raw_video.mp4")
+
+    if not str(video_url).startswith("http"):
+        raw_path = str(video_url)
+        print(f"\nPost-producing local file {raw_path}...")
+        subprocess.run([sys.executable, POST_PRODUCE_SCRIPT, raw_path], check=True)
+        return
 
     print(f"\nDownloading raw video to {raw_path}...")
     resp = requests.get(video_url, stream=True, timeout=300)
@@ -396,6 +425,17 @@ def main():
     parser.add_argument("--voice-id", default=None, help="ElevenLabs voice ID override (default: module-level VOICE_ID constant)")
     parser.add_argument("--kling-model", default="v3.0", choices=list(KLING_MODELS.keys()),
                         help="Kling model variant (default v3.0). Cost/quality varies by model.")
+    parser.add_argument("--assembler", default="json2video", choices=["json2video", "local"],
+                        help="Final assembly: 'local' uses the in-house FFmpeg assembler "
+                             "(burned captions, no JSON2Video credits, any ElevenLabs voice).")
+    parser.add_argument("--aspect-ratio", default="16:9", choices=["16:9", "1:1", "9:16"],
+                        help="Output canvas for the local assembler.")
+    parser.add_argument("--out", default=None, help="Output MP4 path (local assembler).")
+    parser.add_argument("--no-captions", action="store_true",
+                        help="Skip burned-in captions (local assembler).")
+    parser.add_argument("--style", default=DEFAULT_STYLE, choices=["cinematic", "epic", "kids"],
+                        help="Audience style pack: cinematic (default, the classic look), "
+                             "epic (High Cinematic, adults), kids (animated, child-safe).")
     parser.add_argument("--lora-url", default=None,
                         help="Trained FLUX LoRA URL (from scripts/train-flux-lora.py output). "
                              "When set, routes FLUX to the LoRA-enabled endpoint.")
@@ -411,6 +451,11 @@ def main():
     parser.add_argument("--manifest-out", default=None,
                         help="Path to write clips_manifest.json (default: output/<topic>_manifest.json)")
     args = parser.parse_args()
+
+    # Lock in the style pack for this run — every stage reads ACTIVE_PACK.
+    global ACTIVE_PACK
+    ACTIVE_PACK = resolve_style(args.style)
+    print(f"Style: {ACTIVE_PACK['name']} ({ACTIVE_PACK['audience']})")
 
     # Validate env
     required = {"ANTHROPIC_API_KEY": ANTHROPIC_API_KEY}
@@ -465,6 +510,24 @@ def main():
             "video_url": video_url,
         })
         print()
+
+    # --assembler local: finish the video here with the in-house FFmpeg assembler
+    # instead of JSON2Video. Same captions, no third-party credits, no last-step
+    # failure after the FLUX/Kling spend, and any ElevenLabs voice the account owns.
+    if args.assembler == "local":
+        from local_assembler import assemble
+        topic = args.topic or os.path.basename(args.script_file).rsplit(".", 1)[0]
+        out_file = args.out or os.path.join("output", f"{topic}_{args.style}.mp4")
+        os.makedirs(os.path.dirname(os.path.abspath(out_file)), exist_ok=True)
+        voice = args.voice_id or ACTIVE_PACK["suggested_voice"]
+        print(f"\nAssembling locally (style={args.style}, voice={voice})...")
+        final = assemble(processed, voice, aspect_ratio=args.aspect_ratio,
+                         style=args.style, out_path=out_file,
+                         captions=not args.no_captions)
+        print(f"\nDone: {final}")
+        if args.post_produce:
+            run_post_produce(final)
+        return
 
     # --skip-json2video: dump manifest for local FFmpeg assembly and stop here.
     # The existing JSON2Video path below is untouched when this flag is absent.

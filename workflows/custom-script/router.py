@@ -23,6 +23,9 @@ from fastapi.responses import HTMLResponse, JSONResponse
 
 from rate_limit import limiter, EXPENSIVE_LIMIT, MEDIUM_LIMIT
 from usage import log_event
+from style_packs import (
+    DEFAULT_STYLE, ETHNICITY_RULES, apply_subtitle_style, resolve_style, style_list,
+)
 from pydantic import BaseModel
 
 FAL_KEY = os.getenv("FAL_KEY")
@@ -57,17 +60,18 @@ VOICE_SPEED = 0.9
 # Voice catalog exposed to the UI via GET /custom/api/voices.
 # Order matters — first entry shown first in the picker. Keep in sync with
 # workflows/biblical-cinematic/server/biblical_pipeline.py and the README voice table.
+# Test-rendered against JSON2Video on 2026-07-25 — see biblical_pipeline.py note.
 VOICES = [
     {"id": "NgBYGKDDq2Z8Hnhatgma", "name": "Pro Narrator (default)"},
     {"id": "onwK4e9ZLuTAKqWW03F9", "name": "Daniel Steady Broadcaster"},
     {"id": "6OzrBCQf8cjERkYgzSg8", "name": "Young Jamal"},
-    {"id": "T4sLxEj9xEGMREO21ACw", "name": "Tommy Israel"},
+    {"id": "T4sLxEj9xEGMREO21ACw", "name": "Tommy Israel (unsupported by JSON2Video)"},
     {"id": "C8OtYB0OTgD7K0YWkg7y", "name": "William J"},
     {"id": "nJvj5shg2xu1GKGxqfkE", "name": "Hakeem"},
-    {"id": "CVRACyqNcQefTlxMj9b", "name": "Lamar Lincoln"},
-    {"id": "h2sm0NbeIZXHBzJOMYcQ", "name": "Natasha Smooth Narrator"},
-    {"id": "OOk3INdXVLRmSaQoAX9D", "name": "Alicia Calm Storyteller"},
-    {"id": "6aDn1KB0hjpdcocrUkmq", "name": "Tiffany Warm Conversational"},
+    {"id": "CVRACyqNcQefTlxMj9b", "name": "Lamar Lincoln (unsupported by JSON2Video)"},
+    {"id": "h2sm0NbeIZXHBzJOMYcQ", "name": "Natasha Smooth Narrator (untested)"},
+    {"id": "OOk3INdXVLRmSaQoAX9D", "name": "Alicia Calm Storyteller (unsupported by JSON2Video)"},
+    {"id": "6aDn1KB0hjpdcocrUkmq", "name": "Tiffany Warm Conversational (untested)"},
 ]
 def resolve_voice(voice_id):
     """Return the supplied voice id (catalog or user-entered) or the default
@@ -111,6 +115,8 @@ pipeline_state = {
     "model": "v3.0",
     "aspect_ratio": "16:9",
     "voice_id": VOICE_ID,
+    # Style pack id — "cinematic" (default) | "epic" (High Cinematic, adults) | "kids" (animation).
+    "style": DEFAULT_STYLE,
 }
 
 lock = threading.Lock()
@@ -173,51 +179,56 @@ def load_state():
 clear_stop()
 load_state()
 
-SCENE_GENERATION_PROMPT = """You are a cinematic video production expert for AI Bible Gospels — a channel revealing the hidden identity of the 12 Tribes of Israel through Scripture, history, and prophecy.
+def scene_generation_prompt(pack) -> str:
+    """Build the Custom Script system prompt for a style pack.
+
+    `cinematic` reproduces the original prompt verbatim (regression baseline);
+    `epic` and `kids` swap the visual + narration language. Ethnicity rules and the
+    no-text-in-images rule are fixed for every pack — see style_packs.py.
+    """
+    extra = f"\n{pack['extra_guidelines']}" if pack["extra_guidelines"] else ""
+    narration_note = f"\n\n{pack['narration_note']}" if pack["narration_note"] else ""
+    return f"""You are a {pack['director_role']} for AI Bible Gospels — a channel revealing the hidden identity of the 12 Tribes of Israel through Scripture, history, and prophecy.
 
 BRAND STYLE:
-- Dark, dramatic backgrounds with golden divine light
-- Cinematic, reverent, powerful tone
-- Photorealistic ancient biblical settings
+{pack['brand_style']}
 
-CHARACTER ETHNICITY RULES (CRITICAL):
-- ISRAELITES / HEBREWS: Black Hebrew Israelites with rich, deeply melanated dark skin. Natural Afro-textured hair: locs, braids, twists, afros, or traditional head wraps. Traditional Hebrew robes, garments with tzitzit fringes, priestly vestments.
-- ROMANS: Caucasian with light skin. Roman armor, togas, military regalia.
-- GREEKS / MACEDONIANS: Mediterranean olive skin. Hellenistic armor, robes, classical styling.
-- EGYPTIANS: Brown skin. Traditional Egyptian garments and headdress.
-- PERSIANS / MEDES: Olive-brown skin. Ornate Persian robes.
-- PHILISTINES / CANAANITES: Mediterranean/Levantine appearance. Bronze armor, distinctive garments.
-- For scenes with MULTIPLE nations, depict EACH character according to their own nation's ethnicity.
-- CRITICAL: Israelites = Black Hebrew Israelites. All other nations = their own historical ethnicity.
+{ETHNICITY_RULES}{pack['ethnicity_extra']}
 
 YOUR TASK:
-Read the script/concept below and break it into cinematic scenes for video production. You are NOT narrating it word-for-word — you are a creative director interpreting the concept into powerful, cinematic narration and visuals.
+Read the script/concept below and break it into scenes for video production. You are NOT narrating it word-for-word — you are a creative director interpreting the concept into powerful narration and visuals.
 
 For each scene, create:
-1. **narration**: Your own cinematic narration inspired by the script (not word-for-word copy). Write powerful, revelatory prose that captures the spirit and message. Keep each scene's narration between 20-60 words.
-2. **imagePrompt**: Extremely detailed visual description for AI image generation. Include character ethnicity per rules above, clothing details, setting, camera angle, atmosphere. End with "photorealistic, cinematic, 8K detail". NEVER include text or words in the image prompt — AI misspells them.
-3. **motion**: Camera movement description for video animation (zoom, pan, tilt, pull back, tracking shot, etc.). Vary angles — never repeat the same motion twice in a row.
-4. **lighting**: Specific dramatic lighting for the scene (golden hour, divine shaft of light, torch-lit darkness, moonlit, etc.).
+1. **narration**: Your own narration inspired by the script (not word-for-word copy). Write prose that captures the spirit and message. Keep each scene's narration between 20-60 words.
+2. **imagePrompt**: Extremely detailed visual description for AI image generation. Include character ethnicity per rules above, clothing details, setting, camera angle, atmosphere. End with "{pack['image_suffix_custom']}". {pack['forbidden_line']} NEVER include text or words in the image prompt — AI misspells them.
+3. **motion**: {pack['motion_note']}
+4. **lighting**: {pack['lighting_note']}
 GUIDELINES:
 - Create as many scenes as the content naturally needs (don't pad, don't compress)
 - Vary camera angles: close-up → wide shot → medium → aerial → over-shoulder
-- Vary lighting: golden divine light, torch-lit darkness, moonlit night, storm clouds, sunrise
-- Make narration powerful and revelatory — this is awakening content
-- Each scene should be visually distinct from the one before it
-- For channel branding scenes (subscribe, logo, etc.), describe the visual elements cinematically
+- Vary lighting: {pack['lighting_examples']}
+{pack['script_tone_line']}
+- Each scene should be visually distinct from the one before it{extra}
+- For channel branding scenes (subscribe, logo, etc.), describe the visual elements in this style
 - NEVER put text, words, letters, or titles in image prompts
+- ANIMATION SAFETY: these stills get animated afterwards, and small ambiguous shapes
+  get reinvented into modern objects when they move. Do NOT describe large scatters of
+  tiny distant figures, animals, or objects strung along a road, path, or ridge line.
+  Keep distant elements few, large enough to read, and clearly identifiable; put
+  crowds and flocks in the mid-ground as a readable mass rather than as a line of
+  small dots receding into the distance{narration_note}
 
 Return ONLY valid JSON in this exact format:
-{
+{{
   "scenes": [
-    {
+    {{
       "narration": "...",
       "imagePrompt": "...",
       "motion": "...",
       "lighting": "..."
-    }
+    }}
   ]
-}"""
+}}"""
 
 
 # ---------------------------------------------------------------------------
@@ -225,12 +236,14 @@ Return ONLY valid JSON in this exact format:
 # ---------------------------------------------------------------------------
 class ScriptInput(BaseModel):
     script: str
+    style: str = DEFAULT_STYLE
 
 class ScenesInput(BaseModel):
     scenes: list
     model: str = "v3.0"
     aspect_ratio: str = "16:9"
     voice_id: str = VOICE_ID
+    style: str = DEFAULT_STYLE
 
 class FixSceneInput(BaseModel):
     scene_index: int
@@ -238,30 +251,34 @@ class FixSceneInput(BaseModel):
     model: str = "v3.0"
     aspect_ratio: str = "16:9"
     voice_id: str = VOICE_ID
+    style: str = DEFAULT_STYLE
 
 class BatchFixInput(BaseModel):
     fixes: list  # [{scene_index: int, scene: dict}, ...]
     model: str = "v3.0"
     aspect_ratio: str = "16:9"
     voice_id: str = VOICE_ID
+    style: str = DEFAULT_STYLE
 
 class PreviewScenesInput(BaseModel):
     fixes: list  # [{scene_index: int, scene: dict}, ...]
     model: str = "v3.0"
     aspect_ratio: str = "16:9"
     voice_id: str = VOICE_ID
+    style: str = DEFAULT_STYLE
 
 
 # ---------------------------------------------------------------------------
 # Pipeline functions
 # ---------------------------------------------------------------------------
-def generate_scenes_from_script(script_text):
+def generate_scenes_from_script(script_text, style=DEFAULT_STYLE):
+    system_prompt = scene_generation_prompt(resolve_style(style))
     resp = requests.post(
         ANTHROPIC_URL,
         headers={"x-api-key": ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "Content-Type": "application/json"},
         json={"model": "claude-sonnet-4-6", "max_tokens": 16000,
               "thinking": {"type": "disabled"}, "output_config": {"effort": "low"},
-              "messages": [{"role": "user", "content": f"{SCENE_GENERATION_PROMPT}\n\n---\n\nSCRIPT/CONCEPT:\n\n{script_text}"}]},
+              "messages": [{"role": "user", "content": f"{system_prompt}\n\n---\n\nSCRIPT/CONCEPT:\n\n{script_text}"}]},
         timeout=300,
     )
     resp.raise_for_status()
@@ -277,7 +294,14 @@ def fal_headers():
     return {"Authorization": f"Key {FAL_KEY}", "Content-Type": "application/json"}
 
 
-NEGATIVE_PROMPT = "cartoon, anime, illustration, painting, drawing, digital art, concept art, stylized, 3D render, CGI, plastic skin, smooth skin, airbrushed, watercolor, sketch, unrealistic, low quality, blurry"
+# Legacy alias — the live negative prompt now comes from the active style pack.
+# A kids render must NOT negative-prompt "cartoon"; that is the whole point of the pack.
+NEGATIVE_PROMPT = resolve_style(DEFAULT_STYLE)["negative_prompt"]
+
+
+def active_pack():
+    """The style pack for the render currently in flight."""
+    return resolve_style(pipeline_state.get("style", DEFAULT_STYLE))
 
 
 def fal_queue_submit(sync_url, payload, kind=None, poll_seconds=10, max_wait_seconds=1800):
@@ -329,8 +353,13 @@ def generate_image(scene):
     if scene.get("lighting"):
         prompt += f", {scene['lighting']}"
     ratio = ASPECT_RATIOS.get(pipeline_state.get("aspect_ratio", "16:9"), ASPECT_RATIOS["16:9"])
+    pack = active_pack()
+    # Belt-and-braces: if Claude ignored the style instruction, the suffix still lands
+    # on the image prompt so FLUX renders in the right medium.
+    if pack["image_suffix_custom"].split(",")[0].strip().lower() not in prompt.lower():
+        prompt += f", {pack['image_suffix_custom']}"
     data = fal_queue_submit(FLUX_URL, {
-        "prompt": prompt, "negative_prompt": NEGATIVE_PROMPT,
+        "prompt": prompt, "negative_prompt": pack["negative_prompt"],
         "image_size": ratio["flux"], "num_inference_steps": 28, "num_images": 1,
     }, kind="flux", poll_seconds=5, max_wait_seconds=300)
     return data["images"][0]["url"]
@@ -341,13 +370,14 @@ def generate_video(image_url, scene, model="v3.0"):
     ratio = ASPECT_RATIOS.get(pipeline_state.get("aspect_ratio", "16:9"), ASPECT_RATIOS["16:9"])
     data = fal_queue_submit(kling["url"], {
         "image_url": image_url, "prompt": scene.get("motion", "Slow cinematic camera movement"),
-        "duration": kling["duration"], "cfg_scale": 0.5,
+        "duration": kling["duration"], "cfg_scale": active_pack()["cfg_scale"],
+        "negative_prompt": active_pack()["kling_negative"],
         "aspect_ratio": ratio["kling"],
     }, kind="kling", poll_seconds=10, max_wait_seconds=1800)
     return data.get("video", {}).get("url") or data["data"]["video"]["url"]
 
 
-def build_json2video_payload(scenes_data, voice_id=None, aspect_ratio="16:9"):
+def build_json2video_payload(scenes_data, voice_id=None, aspect_ratio="16:9", style=None):
     voice = resolve_voice(voice_id)
     ratio = ASPECT_RATIOS.get(aspect_ratio, ASPECT_RATIOS["16:9"])
     subtitle_settings = {
@@ -356,6 +386,8 @@ def build_json2video_payload(scenes_data, voice_id=None, aspect_ratio="16:9"):
         "outline-color": "#000000", "outline-width": 8, "shadow-color": "#000000",
         "shadow-offset": 6, "max-words-per-line": ratio["sub_max_words"],
     }
+    pack = resolve_style(style) if style is not None else active_pack()
+    subtitle_settings = apply_subtitle_style(subtitle_settings, pack)
     movie_subtitles = {
         "id": "movie_subtitles", "type": "subtitles", "language": "en",
         "model": "default", "settings": subtitle_settings,
@@ -666,9 +698,10 @@ async def api_generate_scenes(request: Request, body: ScriptInput):
         raise HTTPException(400, "ANTHROPIC_API_KEY not set in .env")
     try:
         with lock:
-            pipeline_state.update(phase="generating_scenes", message="Claude is generating scenes...", scenes=None, error=None, video_url=None)
+            pipeline_state.update(phase="generating_scenes", message="Claude is generating scenes...", scenes=None, error=None, video_url=None,
+                                  style=resolve_style(body.style)["id"])
             save_state()
-        scenes = generate_scenes_from_script(body.script)
+        scenes = generate_scenes_from_script(body.script, resolve_style(body.style)["id"])
         with lock:
             pipeline_state.update(phase="idle", scenes=scenes, message=f"Generated {len(scenes)} scenes")
             save_state()
@@ -694,6 +727,7 @@ async def api_generate_video(request: Request, body: ScenesInput):
         pipeline_state["model"] = body.model
         pipeline_state["aspect_ratio"] = body.aspect_ratio
         pipeline_state["voice_id"] = voice_id
+        pipeline_state["style"] = resolve_style(body.style)["id"]
         save_state()
     log_event(request, "custom_generate_video", model=body.model, scenes=len(body.scenes),
               voice=voice_id,
@@ -743,6 +777,7 @@ async def api_fix_scene(request: Request, body: FixSceneInput):
     with lock:
         pipeline_state["voice_id"] = voice_id
         pipeline_state["aspect_ratio"] = body.aspect_ratio
+        pipeline_state["style"] = resolve_style(body.style)["id"]
     log_event(request, "custom_fix_scene", model=body.model, scene_index=body.scene_index,
               total_scenes=len(processed), voice=voice_id)
     thread = threading.Thread(target=run_fix_scene, args=(body.scene_index, body.scene, list(processed), body.model), kwargs={"voice_id": voice_id}, daemon=True)
@@ -766,6 +801,7 @@ async def api_fix_scenes(request: Request, body: BatchFixInput):
     with lock:
         pipeline_state["voice_id"] = voice_id
         pipeline_state["aspect_ratio"] = body.aspect_ratio
+        pipeline_state["style"] = resolve_style(body.style)["id"]
     log_event(request, "custom_fix_scenes", model=body.model, fix_count=len(body.fixes),
               total_scenes=len(processed), voice=voice_id)
     thread = threading.Thread(target=run_fix_scenes, args=(body.fixes, list(processed), body.model), kwargs={"voice_id": voice_id}, daemon=True)
@@ -789,6 +825,7 @@ async def api_preview_scenes(request: Request, body: PreviewScenesInput):
     with lock:
         pipeline_state["voice_id"] = voice_id
         pipeline_state["aspect_ratio"] = body.aspect_ratio
+        pipeline_state["style"] = resolve_style(body.style)["id"]
     log_event(request, "custom_preview_scenes", model=body.model, fix_count=len(body.fixes),
               total_scenes=len(processed), voice=voice_id)
     thread = threading.Thread(target=run_preview_scenes, args=(body.fixes, list(processed), body.model), daemon=True)
@@ -841,6 +878,12 @@ async def api_history_detail(history_id: str):
 async def api_status():
     with lock:
         return JSONResponse(dict(pipeline_state))
+
+
+@custom_router.get("/api/styles")
+async def api_styles():
+    """Style pack catalog for the audience picker."""
+    return JSONResponse({"styles": style_list(), "default": DEFAULT_STYLE})
 
 
 @custom_router.get("/api/voices")
@@ -963,6 +1006,35 @@ Example: A channel trailer about the 12 Tribes of Israel, their scattering, and 
             </div>
           </label>
         </div>
+      </div>
+
+      <!-- Style / audience selector -->
+      <div class="mt-4 mb-4 p-4 bg-gray-800 rounded-xl border border-gray-700">
+        <label class="block text-sm font-medium text-gray-300 mb-2">Style &amp; Audience</label>
+        <div class="grid grid-cols-3 gap-3">
+          <label class="relative cursor-pointer">
+            <input type="radio" name="custom-style-pack" value="cinematic" class="peer sr-only" checked onchange="onCustomStyleChange(this.value)">
+            <div class="p-2 rounded-lg border-2 border-gray-600 peer-checked:border-amber-500 peer-checked:bg-amber-500/10 transition-all">
+              <div class="text-xs font-semibold text-white">🎬 Cinematic</div>
+              <div class="text-xs text-amber-400 mt-1">General / Adults</div>
+            </div>
+          </label>
+          <label class="relative cursor-pointer">
+            <input type="radio" name="custom-style-pack" value="epic" class="peer sr-only" onchange="onCustomStyleChange(this.value)">
+            <div class="p-2 rounded-lg border-2 border-gray-600 peer-checked:border-amber-500 peer-checked:bg-amber-500/10 transition-all">
+              <div class="text-xs font-semibold text-white">🎥 High Cinematic</div>
+              <div class="text-xs text-amber-400 mt-1">Adults · film grade</div>
+            </div>
+          </label>
+          <label class="relative cursor-pointer">
+            <input type="radio" name="custom-style-pack" value="kids" class="peer sr-only" onchange="onCustomStyleChange(this.value)">
+            <div class="p-2 rounded-lg border-2 border-gray-600 peer-checked:border-amber-500 peer-checked:bg-amber-500/10 transition-all">
+              <div class="text-xs font-semibold text-white">🧸 Kids Animation</div>
+              <div class="text-xs text-amber-400 mt-1">Children 4–11</div>
+            </div>
+          </label>
+        </div>
+        <p class="text-xs text-gray-500 mt-3">Pick before generating scenes — the style drives Claude's scene writing, the image look, and the caption styling.</p>
       </div>
 
       <!-- Aspect ratio selector -->
@@ -1129,7 +1201,7 @@ async function generateScenes() {
   try {
     const res = await fetch(API_PREFIX + '/api/generate-scenes', {
       method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({script})
+      body: JSON.stringify({script, style: selectedCustomStyle()})
     });
     if (!res.ok) { const err = await res.json(); throw new Error(err.detail || 'Scene generation failed'); }
     const data = await res.json();
@@ -1190,6 +1262,7 @@ async function generateVideo() {
         model: document.querySelector('input[name="custom-kling-model"]:checked')?.value || 'v3.0',
         aspect_ratio: document.querySelector('input[name="custom-aspect-ratio"]:checked')?.value || '16:9',
         voice_id: selectedCustomVoice(),
+        style: selectedCustomStyle(),
       })
     });
     if (!res.ok) { const err = await res.json(); throw new Error(err.detail || 'Failed to start pipeline'); }
@@ -1405,6 +1478,7 @@ async function previewSelectedScenes() {
         model: document.querySelector('input[name="custom-kling-model"]:checked')?.value || 'v3.0',
         aspect_ratio: document.querySelector('input[name="custom-aspect-ratio"]:checked')?.value || '16:9',
         voice_id: selectedCustomVoice(),
+        style: selectedCustomStyle(),
       })
     });
     if (!res.ok) { const err = await res.json(); throw new Error(err.detail || 'Preview failed'); }
@@ -1457,6 +1531,7 @@ async function batchFixScenes() {
         model: document.querySelector('input[name="custom-kling-model"]:checked')?.value || 'v3.0',
         aspect_ratio: document.querySelector('input[name="custom-aspect-ratio"]:checked')?.value || '16:9',
         voice_id: selectedCustomVoice(),
+        style: selectedCustomStyle(),
       })
     });
     if (!res.ok) { const err = await res.json(); throw new Error(err.detail || 'Batch fix failed'); }
@@ -1529,6 +1604,36 @@ async function loadVoices() {
   }
 }
 
+// ── Style packs ─────────────────────────────────────────────────────────────
+function selectedCustomStyle() {
+  return document.querySelector('input[name="custom-style-pack"]:checked')?.value || 'cinematic';
+}
+
+// Picking an audience auto-selects that pack's suggested voice + Kling model.
+// Both remain overridable — this is a starting point, not a lock.
+let _customStylePacks = null;
+async function loadCustomStylePacks() {
+  try {
+    const res = await fetch(API_PREFIX + '/api/styles');
+    if (!res.ok) return;
+    const data = await res.json();
+    _customStylePacks = {};
+    (data.styles || []).forEach(s => { _customStylePacks[s.id] = s; });
+  } catch(e) { /* picker still works without suggestions */ }
+}
+
+function onCustomStyleChange(styleId) {
+  const pack = _customStylePacks?.[styleId];
+  if (!pack) return;
+  const typed = (document.getElementById('custom-voice-custom')?.value || '').trim();
+  const sel = document.getElementById('custom-voice');
+  if (!typed && sel && pack.suggested_voice) {
+    if ([...sel.options].some(o => o.value === pack.suggested_voice)) sel.value = pack.suggested_voice;
+  }
+  const modelRadio = document.querySelector('input[name="custom-kling-model"][value="' + pack.suggested_model + '"]');
+  if (modelRadio) modelRadio.checked = true;
+}
+
 // Custom-ID input wins over the dropdown when filled — lets users paste any ElevenLabs id.
 function selectedCustomVoice() {
   const custom = (document.getElementById('custom-voice-custom')?.value || '').trim();
@@ -1566,7 +1671,7 @@ async function playVoicePreview(voiceId, btn) {
 }
 
 // Load history + voices on page load
-document.addEventListener('DOMContentLoaded', () => { loadHistory(); loadVoices(); });
+document.addEventListener('DOMContentLoaded', () => { loadHistory(); loadVoices().then(loadCustomStylePacks); });
 </script>
 </body>
 </html>"""

@@ -336,6 +336,129 @@ python workflows/custom-script/recover_run.py # one-shot recovery — see Key Fi
 
 ---
 
+## Style Packs — one engine, three audiences
+
+Added 2026-07-25. A **style pack** bundles everything that changes when you swap
+audience: the Claude system prompt, the FLUX image suffix, the FLUX negative
+prompt, Kling motion guidance + `cfg_scale`, subtitle styling, and the suggested
+voice / Kling model. Single source of truth:
+[`workflows/biblical-cinematic/server/style_packs.py`](workflows/biblical-cinematic/server/style_packs.py).
+
+| id | Name | Audience | Look |
+|---|---|---|---|
+| `cinematic` | Cinematic | General / Adults | **Default.** The original AI Bible Gospels look — byte-identical to pre-style-pack behavior. |
+| `epic` | High Cinematic | Adults | Feature-film grade — anamorphic ARRI 65 framing, volumetric god rays, shallow DoF, gold/teal grade, slow deliberate camera. Gold captions instead of yellow. Suggests O3 + Daniel Steady Broadcaster. |
+| `kids` | Kids Animation | Children 4–11 | Stylized 3D family-film animation — warm saturated palette, rounded design, gentle camera, bright lighting. Hard no on blood/gore/horror. Big rounded captions (Baloo 2, 2 words/line). Suggests v3.0 + Alicia Calm Storyteller. |
+
+**Rules that packs may NOT override:**
+- **Character ethnicity** — `ETHNICITY_RULES` is shared by every pack. Kids mode
+  adds an explicit reinforcement: animation changes shape and rendering only,
+  never skin tone, hair texture, or features.
+- **Scripture is word-for-word** in Scripture Mode regardless of style. Kids mode
+  simplifies only the intro/outro narration Claude writes itself.
+- **No text in image prompts.**
+
+**Where it's wired:**
+- Scripture Mode — `style` field on every `/v9/api/*` body; picker in the UI above
+  Aspect Ratio; catalog at `GET /v9/api/styles`
+- Custom Script Mode — `style` field on every `/custom/api/*` body; picker in the
+  UI; catalog at `GET /custom/api/styles`
+- CLI — `python workflows/custom-script/generate.py script.txt --style kids`
+- Live render state carries `pipeline_state["style"]`, so retry / fix-scene /
+  fix-scenes re-render in the same style.
+
+**Gotcha:** the old module-level `NEGATIVE_PROMPT` constants are now just aliases
+for the default pack. The live negative prompt comes from the active pack — a kids
+render must NOT negative-prompt "cartoon". If you add a pack, set both
+`negative_prompt` and `image_suffix` or the medium will fight itself.
+
+**Verified 2026-07-25** by live JSON2Video test renders: the kids subtitle font
+`Baloo 2` renders fine, and both suggested voices are on JSON2Video's supported
+list.
+
+**Voice trap (found the hard way):** JSON2Video accepts only voice ids on its own
+ElevenLabs list. An unsupported id does not fail fast — it fails at final assembly,
+**after** every FLUX image and Kling clip has been paid for. Three ids in the voice
+picker are rejected: `T4sLxEj9xEGMREO21ACw` (Tommy Israel),
+`CVRACyqNcQefTlxMj9b` (Lamar Lincoln), `OOk3INdXVLRmSaQoAX9D` (Alicia Calm
+Storyteller). They are now labelled in the picker rather than silently offered.
+Confirmed working: Pro Narrator, Daniel Steady Broadcaster, Young Jamal, William J,
+Hakeem. Natasha and Tiffany are still untested (the account hit zero credits before
+their tests completed). Never set a pack's `suggested_voice` without test-rendering
+it first.
+
+---
+
+## Local Assembler — the in-house replacement for JSON2Video
+
+Added 2026-07-25.
+[`workflows/biblical-cinematic/server/local_assembler.py`](workflows/biblical-cinematic/server/local_assembler.py)
+produces the final MP4 on this machine, with burned-in word-by-word captions, and
+never touches JSON2Video.
+
+```
+ElevenLabs (with-timestamps)  → narration audio + exact per-word timings
+FFmpeg                        → per-scene conform (canvas, 30fps, hold last frame)
+libass                        → burned captions styled by the active style pack
+FFmpeg                        → concat + one burn pass → final MP4
+```
+
+**Why it exists:**
+1. JSON2Video fails at the **last** step — a bad voice id or an empty credit
+   balance destroys a full render's worth of FLUX + Kling spend.
+2. Its voice list is curated and rejects valid ElevenLabs voices the account owns.
+3. Caption timing here is **ground truth from the synthesizer**, not a
+   transcription guess, so the word highlight lands exactly on the word.
+
+**Use it:**
+```bash
+# End to end, no JSON2Video:
+python workflows/custom-script/generate.py script.txt --style kids --assembler local
+
+# Assemble an already-rendered scene list (the pipeline's `processed` shape):
+python workflows/biblical-cinematic/server/local_assembler.py scenes.json --style epic --out final.mp4
+```
+Flags: `--aspect-ratio` (16:9 / 1:1 / 9:16), `--out`, `--no-captions`, `--voice-id`.
+
+**Fonts:** libass resolves by *family name* and silently substitutes if missing, so
+every caption family ships as a file in
+[`workflows/biblical-cinematic/assets/fonts/`](workflows/biblical-cinematic/assets/fonts/)
+(`Oswald.ttf`, `Baloo2.ttf`, `ArchivoBlack.ttf`). Add a font there **and** to
+`FONT_FILES` before using it in a pack.
+
+**Windows gotcha (already handled):** an absolute Windows path inside an FFmpeg
+filter argument can't be escaped reliably — the drive colon collides with the
+filter's option separator. The burn pass runs with `cwd` set to the work dir and
+uses relative paths (`subtitles=captions.ass:fontsdir=.`). Don't "fix" that back
+to absolute paths.
+
+**Status:** the CLI is wired and verified end to end. The **web app / Modal path
+still uses JSON2Video** — Modal's image has no FFmpeg and the app returns a URL
+rather than a file, so switching it is a deliberate follow-up, not a default flip.
+
+---
+
+## Motion hallucination guard (2026-07-25)
+
+A kids render turned a hillside scattered with distant sheep into **a convoy of
+pickup trucks**. Kling reinterprets small ambiguous shapes when it animates them,
+and a line of tiny blobs along a path resolves to the most common thing that shape
+does on a road. Three fixes, all in the packs:
+
+1. **`cfg_scale` was backwards for kids** — it was 0.45, and a *low* cfg gives Kling
+   more freedom to reinvent the frame. Kids is now **0.75** (holds the source image
+   hardest — storybook backgrounds are simple and full of small repeated shapes),
+   High Cinematic **0.6** (slow moves = more frames to drift over), Cinematic stays
+   at the 0.5 baseline.
+2. **`ANACHRONISM_GUARD`** — every pack now sends a Kling `negative_prompt` blocking
+   vehicles, modern machinery, power lines, signage, morphing/warping geometry.
+   Kling previously got **no** negative prompt at all.
+3. **Prompt-level animation safety** — Claude is told not to describe scatters of
+   tiny distant figures strung along a road or ridge; crowds and flocks go in the
+   mid-ground as a readable mass.
+
+---
+
 ## Environment Variables
 
 See [.env.example](.env.example) for all keys. The `.env` file lives at the workspace root.

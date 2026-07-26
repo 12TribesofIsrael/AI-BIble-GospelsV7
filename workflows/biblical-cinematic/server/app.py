@@ -791,6 +791,38 @@ LANDING_PAGE = """<!DOCTYPE html>
           </div>
         </div>
 
+        <!-- Style / audience selector -->
+        <div class="mt-4 mb-4 p-4 bg-gray-800 rounded-xl border border-gray-700">
+          <label class="block text-sm font-medium text-gray-300 mb-2">Style &amp; Audience</label>
+          <div class="grid grid-cols-3 gap-3">
+            <label class="relative cursor-pointer">
+              <input type="radio" name="style-pack" value="cinematic" class="peer sr-only" checked onchange="onStyleChange(this.value)">
+              <div class="p-3 rounded-lg border-2 border-gray-600 peer-checked:border-amber-500 peer-checked:bg-amber-500/10 transition-all">
+                <div class="text-sm font-semibold text-white">🎬 Cinematic</div>
+                <div class="text-xs text-gray-400 mt-1">General / Adults</div>
+                <div class="text-xs text-amber-400 mt-1 font-medium">The classic look</div>
+              </div>
+            </label>
+            <label class="relative cursor-pointer">
+              <input type="radio" name="style-pack" value="epic" class="peer sr-only" onchange="onStyleChange(this.value)">
+              <div class="p-3 rounded-lg border-2 border-gray-600 peer-checked:border-amber-500 peer-checked:bg-amber-500/10 transition-all">
+                <div class="text-sm font-semibold text-white">🎥 High Cinematic</div>
+                <div class="text-xs text-gray-400 mt-1">Adults</div>
+                <div class="text-xs text-amber-400 mt-1 font-medium">Feature-film grade</div>
+              </div>
+            </label>
+            <label class="relative cursor-pointer">
+              <input type="radio" name="style-pack" value="kids" class="peer sr-only" onchange="onStyleChange(this.value)">
+              <div class="p-3 rounded-lg border-2 border-gray-600 peer-checked:border-amber-500 peer-checked:bg-amber-500/10 transition-all">
+                <div class="text-sm font-semibold text-white">🧸 Kids Animation</div>
+                <div class="text-xs text-gray-400 mt-1">Children 4–11</div>
+                <div class="text-xs text-amber-400 mt-1 font-medium">Cartoon, never scary</div>
+              </div>
+            </label>
+          </div>
+          <p id="style-hint" class="text-xs text-gray-500 mt-3">Same scripture, different audience. Kids mode renders animated and keeps every frame child-safe; scripture narration stays word-for-word in every style.</p>
+        </div>
+
         <!-- Aspect ratio selector -->
         <div class="mt-4 mb-4 p-4 bg-gray-800 rounded-xl border border-gray-700">
           <label class="block text-sm font-medium text-gray-300 mb-2">Aspect Ratio</label>
@@ -1268,7 +1300,7 @@ LANDING_PAGE = """<!DOCTYPE html>
         const res = await fetch('/v9/api/fix-scenes', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({fixes, model, aspect_ratio, voice_id: selectedBibleVoice()})
+          body: JSON.stringify({fixes, model, aspect_ratio, voice_id: selectedBibleVoice(), style: selectedStyle()})
         });
         if (!res.ok) { const err = await res.json(); throw new Error(err.detail); }
         startPolling();
@@ -1617,6 +1649,7 @@ LANDING_PAGE = """<!DOCTYPE html>
             book: document.getElementById('bible-book')?.value || '',
             chapter: document.getElementById('bible-chapter')?.value || '',
             voice_id: selectedBibleVoice(),
+            style: selectedStyle(),
           }),
         });
 
@@ -1735,6 +1768,7 @@ LANDING_PAGE = """<!DOCTYPE html>
             model: model,
             aspect_ratio: aspect_ratio,
             voice_id: selectedBibleVoice(),
+            style: selectedStyle(),
           }),
         });
         if (!res.ok) { const err = await res.json(); throw new Error(err.detail || 'Failed to start pipeline'); }
@@ -1813,6 +1847,38 @@ LANDING_PAGE = """<!DOCTYPE html>
       }
     }
 
+    // ── Style packs ───────────────────────────────────────────────────────────
+    function selectedStyle() {
+      return document.querySelector('input[name="style-pack"]:checked')?.value || 'cinematic';
+    }
+
+    // Picking an audience auto-selects that pack's suggested voice + Kling model.
+    // Both remain overridable — this is a starting point, not a lock.
+    let _stylePacks = null;
+    async function loadStylePacks() {
+      try {
+        const res = await fetch('/v9/api/styles');
+        if (!res.ok) return;
+        const data = await res.json();
+        _stylePacks = {};
+        (data.styles || []).forEach(s => { _stylePacks[s.id] = s; });
+      } catch (e) { /* picker still works without suggestions */ }
+    }
+
+    function onStyleChange(styleId) {
+      const pack = _stylePacks?.[styleId];
+      if (!pack) return;
+      const custom = (document.getElementById('bible-voice-custom')?.value || '').trim();
+      const voiceSel = document.getElementById('bible-voice');
+      if (!custom && voiceSel && pack.suggested_voice) {
+        if ([...voiceSel.options].some(o => o.value === pack.suggested_voice)) {
+          voiceSel.value = pack.suggested_voice;
+        }
+      }
+      const modelRadio = document.querySelector(`input[name="kling-model"][value="${pack.suggested_model}"]`);
+      if (modelRadio) modelRadio.checked = true;
+    }
+
     // Custom-ID input wins over the dropdown when filled — lets users paste any ElevenLabs id.
     function selectedBibleVoice() {
       const custom = (document.getElementById('bible-voice-custom')?.value || '').trim();
@@ -1849,7 +1915,7 @@ LANDING_PAGE = """<!DOCTYPE html>
     }
 
     // Populate the voice picker on page load.
-    window.addEventListener('load', () => { loadV9Voices(); });
+    window.addEventListener('load', () => { loadV9Voices().then(loadStylePacks); });
 
   </script>
 </body>

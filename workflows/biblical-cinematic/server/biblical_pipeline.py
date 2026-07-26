@@ -28,6 +28,9 @@ from pydantic import BaseModel
 
 from rate_limit import limiter, EXPENSIVE_LIMIT, MEDIUM_LIMIT
 from usage import log_event
+from style_packs import (
+    DEFAULT_STYLE, ETHNICITY_RULES, apply_subtitle_style, resolve_style, style_list,
+)
 
 # ---------------------------------------------------------------------------
 # Config
@@ -65,17 +68,20 @@ VOICE_SPEED = 0.9
 # Voice catalog exposed to the UI via GET /v9/api/voices.
 # Order matters — first entry shown first in the picker. Keep in sync with
 # workflows/custom-script/router.py and the README voice table.
+# Test-rendered against JSON2Video on 2026-07-25. JSON2Video only accepts voice
+# ids on its own supported list — an unsupported id fails the render AFTER all the
+# FLUX + Kling money is spent, so unsupported entries are marked, not silently kept.
 VOICES = [
     {"id": "NgBYGKDDq2Z8Hnhatgma", "name": "Pro Narrator (default)"},
     {"id": "onwK4e9ZLuTAKqWW03F9", "name": "Daniel Steady Broadcaster"},
     {"id": "6OzrBCQf8cjERkYgzSg8", "name": "Young Jamal"},
-    {"id": "T4sLxEj9xEGMREO21ACw", "name": "Tommy Israel"},
+    {"id": "T4sLxEj9xEGMREO21ACw", "name": "Tommy Israel (unsupported by JSON2Video)"},
     {"id": "C8OtYB0OTgD7K0YWkg7y", "name": "William J"},
     {"id": "nJvj5shg2xu1GKGxqfkE", "name": "Hakeem"},
-    {"id": "CVRACyqNcQefTlxMj9b", "name": "Lamar Lincoln"},
-    {"id": "h2sm0NbeIZXHBzJOMYcQ", "name": "Natasha Smooth Narrator"},
-    {"id": "OOk3INdXVLRmSaQoAX9D", "name": "Alicia Calm Storyteller"},
-    {"id": "6aDn1KB0hjpdcocrUkmq", "name": "Tiffany Warm Conversational"},
+    {"id": "CVRACyqNcQefTlxMj9b", "name": "Lamar Lincoln (unsupported by JSON2Video)"},
+    {"id": "h2sm0NbeIZXHBzJOMYcQ", "name": "Natasha Smooth Narrator (untested)"},
+    {"id": "OOk3INdXVLRmSaQoAX9D", "name": "Alicia Calm Storyteller (unsupported by JSON2Video)"},
+    {"id": "6aDn1KB0hjpdcocrUkmq", "name": "Tiffany Warm Conversational (untested)"},
 ]
 def resolve_voice(voice_id):
     """Return the supplied voice id (catalog or user-entered) or the default
@@ -129,6 +135,9 @@ pipeline_state = {
     "model": "v1.6",
     "aspect_ratio": "16:9",
     "voice_id": VOICE_ID,
+    # Style pack id — "cinematic" (default) | "epic" (High Cinematic, adults) | "kids" (animation).
+    # Read by generate_image / generate_video / build_json2video_payload, same as aspect_ratio.
+    "style": DEFAULT_STYLE,
     # When an admin kicks off a render for a specific waitlist invitee, this holds
     # the render id linked to their row (so save_to_history reuses it and the admin
     # dashboard can match the live render back to the user). None for ad-hoc /app renders.
@@ -203,36 +212,41 @@ clear_stop()
 # ---------------------------------------------------------------------------
 # Claude prompt — image prompts only (narration is word-for-word scripture)
 # ---------------------------------------------------------------------------
-IMAGE_PROMPT_SYSTEM = """You are a cinematic visual director for AI Bible Gospels — a channel revealing the hidden identity of the 12 Tribes of Israel through Scripture, history, and prophecy.
+def image_prompt_system(pack) -> str:
+    """Build the Claude system prompt for a given style pack.
+
+    The `cinematic` pack reproduces the engine's original prompt verbatim — it is
+    the regression baseline. `epic` and `kids` swap the visual language while the
+    ethnicity rules and the no-text rule stay fixed for every pack.
+    """
+    extra = f"\n{pack['extra_guidelines']}" if pack["extra_guidelines"] else ""
+    narration_note = f"\n\n{pack['narration_note']}" if pack["narration_note"] else ""
+    return f"""You are a {pack['director_role']} for AI Bible Gospels — a channel revealing the hidden identity of the 12 Tribes of Israel through Scripture, history, and prophecy.
 
 BRAND STYLE:
-- Dark, dramatic backgrounds with golden divine light
-- Cinematic, reverent, powerful tone
-- Photorealistic ancient biblical settings
+{pack['brand_style']}
 
-CHARACTER ETHNICITY RULES (CRITICAL):
-- ISRAELITES / HEBREWS: Black Hebrew Israelites with rich, deeply melanated dark skin. Natural Afro-textured hair: locs, braids, twists, afros, or traditional head wraps. Traditional Hebrew robes, garments with tzitzit fringes, priestly vestments.
-- ROMANS: Caucasian with light skin. Roman armor, togas, military regalia.
-- GREEKS / MACEDONIANS: Mediterranean olive skin. Hellenistic armor, robes, classical styling.
-- EGYPTIANS: Brown skin. Traditional Egyptian garments and headdress.
-- PERSIANS / MEDES: Olive-brown skin. Ornate Persian robes.
-- PHILISTINES / CANAANITES: Mediterranean/Levantine appearance. Bronze armor, distinctive garments.
-- For scenes with MULTIPLE nations, depict EACH character according to their own nation's ethnicity.
-- CRITICAL: Israelites = Black Hebrew Israelites. All other nations = their own historical ethnicity.
+{ETHNICITY_RULES}{pack['ethnicity_extra']}
 
 YOUR TASK:
 You will receive scripture text that has been split into narration chunks. The narration is FINAL — do NOT modify it.
 
 For each narration chunk, generate ONLY visual descriptions:
-1. **imagePrompt**: Extremely detailed visual description for AI image generation. Include character ethnicity per rules above, clothing details, setting, camera angle, atmosphere. ALWAYS end with "photorealistic, cinematic lighting, 8K, shot on RED V-Raptor, hyper-detailed skin texture and fabric weave, natural film grain". NEVER use words like "painting", "illustration", "stylized", "artistic", "cartoon", "anime", "rendered", "digital art", or "concept art". NEVER include text, words, letters, or titles in the image prompt — AI misspells them.
-2. **motion**: Camera movement description for video animation (zoom, pan, tilt, pull back, tracking shot, etc.). Vary angles — never repeat the same motion twice in a row.
-3. **lighting**: Specific dramatic lighting for the scene (golden hour, divine shaft of light, torch-lit darkness, moonlit, etc.).
+1. **imagePrompt**: Extremely detailed visual description for AI image generation. Include character ethnicity per rules above, clothing details, setting, camera angle, atmosphere. ALWAYS end with "{pack['image_suffix']}". {pack['forbidden_line']} NEVER include text, words, letters, or titles in the image prompt — AI misspells them.
+2. **motion**: {pack['motion_note']}
+3. **lighting**: {pack['lighting_note']}
 
 GUIDELINES:
 - Vary camera angles: close-up → wide shot → medium → aerial → over-shoulder
-- Vary lighting: golden divine light, torch-lit darkness, moonlit night, storm clouds, sunrise
-- Each scene should be visually distinct from the one before it
+- Vary lighting: {pack['lighting_examples']}
+- Each scene should be visually distinct from the one before it{extra}
 - NEVER put text, words, letters, or titles in image prompts
+- ANIMATION SAFETY: these stills get animated afterwards, and small ambiguous shapes
+  get reinvented into modern objects when they move. Do NOT describe large scatters of
+  tiny distant figures, animals, or objects strung along a road, path, or ridge line.
+  Keep distant elements few, large enough to read, and clearly identifiable; put
+  crowds and flocks in the mid-ground as a readable mass rather than as a line of
+  small dots receding into the distance{narration_note}
 
 INTRO & OUTRO SCENES:
 In addition to the scripture scenes, you MUST generate:
@@ -241,30 +255,30 @@ In addition to the scripture scenes, you MUST generate:
 - All middle scenes (the scripture narration) should have "type": "scripture".
 
 Return ONLY valid JSON in this exact format:
-{
+{{
   "scenes": [
-    {
+    {{
       "type": "intro",
-      "narration": "your cinematic intro narration here...",
+      "narration": "your intro narration here...",
       "imagePrompt": "...",
       "motion": "...",
       "lighting": "..."
-    },
-    {
+    }},
+    {{
       "type": "scripture",
       "imagePrompt": "...",
       "motion": "...",
       "lighting": "..."
-    },
-    {
+    }},
+    {{
       "type": "outro",
-      "narration": "your cinematic outro narration here...",
+      "narration": "your outro narration here...",
       "imagePrompt": "...",
       "motion": "...",
       "lighting": "..."
-    }
+    }}
   ]
-}"""
+}}"""
 
 
 # ---------------------------------------------------------------------------
@@ -278,6 +292,7 @@ class BiblicalGenerateInput(BaseModel):
     book: str = ""
     chapter: str = ""
     voice_id: str = VOICE_ID
+    style: str = DEFAULT_STYLE
 
 
 class BiblicalScenesInput(BaseModel):
@@ -285,6 +300,7 @@ class BiblicalScenesInput(BaseModel):
     model: str = "v1.6"
     aspect_ratio: str = "16:9"
     voice_id: str = VOICE_ID
+    style: str = DEFAULT_STYLE
 
 
 class BiblicalFixSceneInput(BaseModel):
@@ -293,6 +309,7 @@ class BiblicalFixSceneInput(BaseModel):
     model: str = "v1.6"
     aspect_ratio: str = "16:9"
     voice_id: str = VOICE_ID
+    style: str = DEFAULT_STYLE
 
 
 class BiblicalFixScenesInput(BaseModel):
@@ -300,6 +317,7 @@ class BiblicalFixScenesInput(BaseModel):
     model: str = "v1.6"
     aspect_ratio: str = "16:9"
     voice_id: str = VOICE_ID
+    style: str = DEFAULT_STYLE
 
 
 # ---------------------------------------------------------------------------
@@ -379,7 +397,7 @@ def split_scripture_into_scenes(text, target_words_per_scene=30):
 PROMPT_BATCH_SIZE = 12
 
 
-def _request_prompt_batch(chunks, include_intro, include_outro, book="", chapter=""):
+def _request_prompt_batch(chunks, include_intro, include_outro, book="", chapter="", style=DEFAULT_STYLE):
     """One Claude call for a slice of scripture scenes (+ intro on the first batch,
     + outro on the last). Returns the parsed scenes with word-for-word narration
     already merged onto the scripture scenes in THIS batch (localizes any miscount
@@ -408,7 +426,7 @@ def _request_prompt_batch(chunks, include_intro, include_outro, book="", chapter
     outro_note = "" if include_outro else "\nDo NOT generate an outro scene in this batch."
 
     user_msg = (
-        f"{IMAGE_PROMPT_SYSTEM}\n\n---{context_line}\n\n"
+        f"{image_prompt_system(resolve_style(style))}\n\n---{context_line}\n\n"
         f"Generate {', then '.join(parts)}.{intro_note}{outro_note}\n\n"
         f"Total scenes in your response: {total} ({' + '.join(breakdown)})\n\n{numbered}"
     )
@@ -439,7 +457,7 @@ def _request_prompt_batch(chunks, include_intro, include_outro, book="", chapter
     return scenes
 
 
-def generate_image_prompts(narration_chunks, book="", chapter=""):
+def generate_image_prompts(narration_chunks, book="", chapter="", style=DEFAULT_STYLE):
     """Send narration chunks to Claude in bounded batches, get back
     imagePrompt/motion/lighting per scene plus a leading intro and trailing outro."""
     n = len(narration_chunks)
@@ -451,7 +469,7 @@ def generate_image_prompts(narration_chunks, book="", chapter=""):
         include_intro = (start == 0)
         include_outro = (start + PROMPT_BATCH_SIZE >= n)
         all_scenes.extend(
-            _request_prompt_batch(batch, include_intro, include_outro, book, chapter)
+            _request_prompt_batch(batch, include_intro, include_outro, book, chapter, style)
         )
     return all_scenes
 
@@ -463,7 +481,14 @@ def fal_headers():
     return {"Authorization": f"Key {FAL_KEY}", "Content-Type": "application/json"}
 
 
-NEGATIVE_PROMPT = "cartoon, anime, illustration, painting, drawing, digital art, concept art, stylized, 3D render, CGI, plastic skin, smooth skin, airbrushed, watercolor, sketch, unrealistic, low quality, blurry"
+# Legacy alias — the live negative prompt now comes from the active style pack.
+# A kids render must NOT negative-prompt "cartoon"; that is the whole point of the pack.
+NEGATIVE_PROMPT = resolve_style(DEFAULT_STYLE)["negative_prompt"]
+
+
+def active_pack():
+    """The style pack for the render currently in flight."""
+    return resolve_style(pipeline_state.get("style", DEFAULT_STYLE))
 
 
 def fal_queue_submit(sync_url, payload, kind, poll_seconds=10, max_wait_seconds=1800):
@@ -540,8 +565,13 @@ def generate_image(scene):
     if scene.get("lighting"):
         prompt += f", {scene['lighting']}"
     ratio = ASPECT_RATIOS.get(pipeline_state.get("aspect_ratio", "16:9"), ASPECT_RATIOS["16:9"])
+    pack = active_pack()
+    # Belt-and-braces: if Claude ignored the style instruction, the suffix still lands
+    # on the image prompt so FLUX renders in the right medium.
+    if pack["image_suffix"].split(",")[0].strip().lower() not in prompt.lower():
+        prompt += f", {pack['image_suffix']}"
     data = fal_queue_submit(FLUX_URL, {
-        "prompt": prompt, "negative_prompt": NEGATIVE_PROMPT,
+        "prompt": prompt, "negative_prompt": pack["negative_prompt"],
         "image_size": ratio["flux"], "num_inference_steps": 28, "num_images": 1,
     }, kind="flux", poll_seconds=5, max_wait_seconds=300)
     return data["images"][0]["url"]
@@ -550,15 +580,17 @@ def generate_image(scene):
 def generate_video(image_url, scene, model="v1.6"):
     kling = KLING_MODELS.get(model, KLING_MODELS["v1.6"])
     ratio = ASPECT_RATIOS.get(pipeline_state.get("aspect_ratio", "16:9"), ASPECT_RATIOS["16:9"])
+    pack = active_pack()
     data = fal_queue_submit(kling["url"], {
         "image_url": image_url, "prompt": scene.get("motion", "Slow cinematic camera movement"),
-        "duration": kling["duration"], "cfg_scale": 0.5,
+        "duration": kling["duration"], "cfg_scale": pack["cfg_scale"],
+        "negative_prompt": pack["kling_negative"],
         "aspect_ratio": ratio["kling"],
     }, kind="kling", poll_seconds=10, max_wait_seconds=1800)
     return data.get("video", {}).get("url") or data["data"]["video"]["url"]
 
 
-def build_json2video_payload(scenes_data, voice_id=None, aspect_ratio="16:9"):
+def build_json2video_payload(scenes_data, voice_id=None, aspect_ratio="16:9", style=None):
     voice = resolve_voice(voice_id)
     ratio = ASPECT_RATIOS.get(aspect_ratio, ASPECT_RATIOS["16:9"])
     subtitle_settings = {
@@ -567,6 +599,8 @@ def build_json2video_payload(scenes_data, voice_id=None, aspect_ratio="16:9"):
         "outline-color": "#000000", "outline-width": 8, "shadow-color": "#000000",
         "shadow-offset": 6, "max-words-per-line": ratio["sub_max_words"],
     }
+    pack = resolve_style(style) if style is not None else active_pack()
+    subtitle_settings = apply_subtitle_style(subtitle_settings, pack)
     scenes = []
     for i, s in enumerate(scenes_data, 1):
         elements = [
@@ -683,7 +717,7 @@ def get_render_status(render_id):
     return None
 
 
-def _run_chapter(text, book, chapter, model, voice_id):
+def _run_chapter(text, book, chapter, model, voice_id, style=DEFAULT_STYLE):
     """Background worker: scripture text -> Claude scenes -> full media pipeline.
     Mirrors the /api/generate body so the admin 'Render chapter' button reuses
     the exact same proven path. Errors land in pipeline_state for the status bar."""
@@ -703,7 +737,8 @@ def _run_chapter(text, book, chapter, model, voice_id):
         traceback.print_exc()
 
 
-def start_render_for_chapter(text, book="", chapter="", model="v1.6", voice_id=None, render_id=None):
+def start_render_for_chapter(text, book="", chapter="", model="v1.6", voice_id=None, render_id=None,
+                             style=DEFAULT_STYLE):
     """Kick off a full render (scenes + media) for one chapter in a background
     thread, callable in-process (the admin 'Render chapter' button).
 
@@ -728,9 +763,10 @@ def start_render_for_chapter(text, book="", chapter="", model="v1.6", voice_id=N
                               message="Splitting scripture and generating scenes with Claude AI...",
                               scenes=None, error=None, video_url=None, video_urls=[], processed=[],
                               book=book, chapter=chapter, model=model, aspect_ratio="16:9",
-                              voice_id=vid, render_id=render_id)
+                              voice_id=vid, render_id=render_id, style=resolve_style(style)["id"])
         save_state()
-    thread = threading.Thread(target=_run_chapter, args=(text, book, chapter, model, vid),
+    thread = threading.Thread(target=_run_chapter,
+                              args=(text, book, chapter, model, vid, resolve_style(style)["id"]),
                               daemon=True)
     thread.start()
     return True, {"render_id": render_id, "book": book, "chapter": chapter}
@@ -902,14 +938,14 @@ def run_fix_scenes(fixes, processed, model="v1.6", voice_id=None):
 biblical_router = APIRouter()
 
 
-def _run_scene_generation(text, words_target, book, chapter):
+def _run_scene_generation(text, words_target, book, chapter, style=DEFAULT_STYLE):
     """Background worker: split scripture + batch Claude calls → scenes. Runs off the
     request thread so a long full-chapter generation (many batches, >100s) doesn't
     block the HTTP response and trip the Cloudflare proxy's ~100s timeout. The browser
     polls /api/status for the result."""
     try:
         narration_chunks = split_scripture_into_scenes(text, words_target)
-        scenes = generate_image_prompts(narration_chunks, book, chapter)
+        scenes = generate_image_prompts(narration_chunks, book, chapter, style)
         with lock:
             pipeline_state.update(phase="idle", scenes=scenes, message=f"Generated {len(scenes)} scenes")
             save_state()
@@ -932,14 +968,16 @@ async def api_generate_scenes(request: Request, body: BiblicalGenerateInput):
     with lock:
         pipeline_state.update(phase="generating_scenes", message="Splitting scripture and generating scene visuals with Claude AI...",
                               scenes=None, error=None, video_url=None, video_urls=[], processed=[],
-                              book=body.book, chapter=body.chapter, model=body.model, aspect_ratio=body.aspect_ratio)
+                              book=body.book, chapter=body.chapter, model=body.model, aspect_ratio=body.aspect_ratio,
+                              style=resolve_style(body.style)["id"])
         save_state()
 
     words_target = WORDS_PER_SCENE.get(body.model, 30)
-    log_event(request, "biblical_generate_scenes", model=body.model, words=len(body.text.split()))
+    log_event(request, "biblical_generate_scenes", model=body.model, words=len(body.text.split()),
+              style=resolve_style(body.style)["id"])
     thread = threading.Thread(
         target=_run_scene_generation,
-        args=(body.text, words_target, body.book, body.chapter),
+        args=(body.text, words_target, body.book, body.chapter, resolve_style(body.style)["id"]),
         daemon=True,
     )
     thread.start()
@@ -963,9 +1001,10 @@ async def api_generate_video(request: Request, body: BiblicalScenesInput):
     scenes = body.scenes
     voice_id = resolve_voice(body.voice_id)
     with lock:
-        pipeline_state.update(scenes=scenes, model=model, voice_id=voice_id, aspect_ratio=body.aspect_ratio)
+        pipeline_state.update(scenes=scenes, model=model, voice_id=voice_id, aspect_ratio=body.aspect_ratio,
+                              style=resolve_style(body.style)["id"])
     log_event(request, "biblical_generate_video", model=model, scenes=len(scenes),
-              voice=voice_id,
+              voice=voice_id, style=resolve_style(body.style)["id"],
               words=sum(len((s.get("narration") or "").split()) for s in scenes))
     thread = threading.Thread(target=run_pipeline, args=(scenes, model), kwargs={"voice_id": voice_id}, daemon=True)
     thread.start()
@@ -992,11 +1031,12 @@ async def api_generate(request: Request, body: BiblicalGenerateInput):
         with lock:
             pipeline_state.update(phase="generating_scenes", message="Splitting scripture and generating scene visuals with Claude AI...",
                                   scenes=None, error=None, video_url=None, video_urls=[], processed=[],
-                                  book=body.book, chapter=body.chapter, model=body.model, aspect_ratio=body.aspect_ratio, voice_id=voice_id)
+                                  book=body.book, chapter=body.chapter, model=body.model, aspect_ratio=body.aspect_ratio, voice_id=voice_id,
+                                  style=resolve_style(body.style)["id"])
 
         words_target = WORDS_PER_SCENE.get(body.model, 30)
         narration_chunks = split_scripture_into_scenes(body.text, words_target)
-        scenes = generate_image_prompts(narration_chunks, body.book, body.chapter)
+        scenes = generate_image_prompts(narration_chunks, body.book, body.chapter, resolve_style(body.style)["id"])
 
         with lock:
             pipeline_state.update(scenes=scenes, message=f"Generated {len(scenes)} scenes — starting media pipeline...")
@@ -1054,8 +1094,9 @@ async def api_fix_scene(request: Request, body: BiblicalFixSceneInput):
     with lock:
         pipeline_state["voice_id"] = voice_id
         pipeline_state["aspect_ratio"] = body.aspect_ratio
+        pipeline_state["style"] = resolve_style(body.style)["id"]
     log_event(request, "biblical_fix_scene", model=body.model, scene_index=body.scene_index,
-              total_scenes=len(processed), voice=voice_id)
+              total_scenes=len(processed), voice=voice_id, style=pipeline_state["style"])
     thread = threading.Thread(target=run_fix_scene, args=(body.scene_index, body.scene, list(processed), body.model), kwargs={"voice_id": voice_id}, daemon=True)
     thread.start()
     return {"status": "fixing", "scene": body.scene_index + 1, "total_scenes": len(processed)}
@@ -1084,8 +1125,9 @@ async def api_fix_scenes(request: Request, body: BiblicalFixScenesInput):
     with lock:
         pipeline_state["voice_id"] = voice_id
         pipeline_state["aspect_ratio"] = body.aspect_ratio
+        pipeline_state["style"] = resolve_style(body.style)["id"]
     log_event(request, "biblical_fix_scenes", model=body.model, fix_count=len(body.fixes),
-              total_scenes=len(processed), voice=voice_id)
+              total_scenes=len(processed), voice=voice_id, style=pipeline_state["style"])
     thread = threading.Thread(target=run_fix_scenes, args=(body.fixes, list(processed), body.model), kwargs={"voice_id": voice_id}, daemon=True)
     thread.start()
     return {"status": "fixing", "scenes": len(body.fixes), "total_scenes": len(processed)}
@@ -1129,3 +1171,9 @@ async def api_status():
 @biblical_router.get("/api/voices")
 async def api_voices():
     return JSONResponse({"voices": VOICES, "default": VOICE_ID})
+
+
+@biblical_router.get("/api/styles")
+async def api_styles():
+    """Style pack catalog for the audience picker."""
+    return JSONResponse({"styles": style_list(), "default": DEFAULT_STYLE})

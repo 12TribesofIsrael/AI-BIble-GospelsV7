@@ -27,9 +27,14 @@ FAL_HISTORY_URL = "https://api.fal.ai/v1/models/requests/by-endpoint"
 VOICE_ID = "NgBYGKDDq2Z8Hnhatgma"
 VOICE_SPEED = 0.9
 
-# Import the scene generation prompt from generate.py
+# Import the scene prompt builder from generate.py. Recovery re-generates
+# narration for an interrupted run, so it must rebuild the prompt with the same
+# style pack the original render used — default `cinematic` unless overridden.
 sys.path.insert(0, os.path.dirname(__file__))
-from generate import SCENE_GENERATION_PROMPT
+from generate import scene_generation_prompt
+from style_packs import DEFAULT_STYLE, resolve_style
+
+RECOVERY_STYLE = os.getenv("RECOVERY_STYLE", DEFAULT_STYLE)
 
 
 def recover_kling_videos():
@@ -72,7 +77,7 @@ def regenerate_scenes(script_path):
             "max_tokens": 8000,
             "thinking": {"type": "disabled"},
             "output_config": {"effort": "low"},
-            "messages": [{"role": "user", "content": f"{SCENE_GENERATION_PROMPT}\n\n---\n\nSCRIPT/CONCEPT:\n\n{script_text}"}],
+            "messages": [{"role": "user", "content": f"{scene_generation_prompt(resolve_style(RECOVERY_STYLE))}\n\n---\n\nSCRIPT/CONCEPT:\n\n{script_text}"}],
         },
         timeout=120,
     )
