@@ -254,9 +254,13 @@ def generate_video(image_url, scene, index, total, kling_model="v3.0"):
         # rides the prompt; audio off — narration is laid over downstream.
         payload = {
             "image_url": image_url,
-            "prompt": motion + " Stay strictly faithful to the source image; "
-                      "period-accurate biblical setting only — no modern objects, "
-                      "vehicles, or text.",
+            "prompt": motion + " Stay strictly faithful to the source image. "
+                      "Preserve every character's exact skin tone and hair from the "
+                      "source frame: deeply melanated dark brown skin stays deeply "
+                      "melanated — never lightened, brightened, or washed out, even "
+                      "under divine glow or backlight — and natural Afro-textured "
+                      "hair stays unchanged. Period-accurate biblical setting only — "
+                      "no modern objects, vehicles, or text.",
             "duration": model_cfg["duration"],
             "resolution": model_cfg["resolution"],
             "generate_audio": False,
