@@ -50,6 +50,11 @@ KLING_MODELS = {
     "v3.0-pro": {"url": "https://fal.run/fal-ai/kling-video/v3/pro/image-to-video", "duration": "15"},
     "o3": {"url": "https://fal.run/fal-ai/kling-video/o3/standard/image-to-video", "duration": "15"},
     "o3-pro": {"url": "https://fal.run/fal-ai/kling-video/o3/pro/image-to-video", "duration": "15"},
+    # ByteDance Seedance 2.5 — premium lane, different API shape: no cfg_scale or
+    # negative_prompt, aspect ratio is inherited from the source image, and it
+    # token-bills (~$0.46/sec at 720p) — hence 10s clips instead of Kling's 15.
+    "seedance-2.5": {"url": "https://fal.run/bytedance/seedance-2.5/image-to-video",
+                     "duration": "10", "engine": "seedance", "resolution": "720p"},
 }
 
 # fal's FLUX uses `portrait_16_9` as its label for a 9:16 (tall) canvas — not a typo.
@@ -427,15 +432,30 @@ def generate_image(scene):
 
 
 def generate_video(image_url, scene, model="v1.6"):
-    kling = KLING_MODELS.get(model, KLING_MODELS["v1.6"])
-    ratio = ASPECT_RATIOS.get(pipeline_state.get("aspect_ratio", "16:9"), ASPECT_RATIOS["16:9"])
-    pack = active_pack()
-    data = fal_queue_submit(kling["url"], {
-        "image_url": image_url, "prompt": scene.get("motion", "Slow cinematic camera movement"),
-        "duration": kling["duration"], "cfg_scale": pack["cfg_scale"],
-        "negative_prompt": pack["kling_negative"],
-        "aspect_ratio": ratio["kling"],
-    }, kind="kling", poll_seconds=10, max_wait_seconds=1800)
+    entry = KLING_MODELS.get(model, KLING_MODELS["v1.6"])
+    motion = scene.get("motion", "Slow cinematic camera movement")
+    if entry.get("engine") == "seedance":
+        # Seedance takes no negative_prompt, so the anachronism guard rides the
+        # prompt itself. Native audio is off — ElevenLabs narration is laid over
+        # the video downstream and the audio seconds would bill for nothing.
+        payload = {
+            "image_url": image_url,
+            "prompt": motion + " Stay strictly faithful to the source image; "
+                      "period-accurate biblical setting only — no modern objects, "
+                      "vehicles, or text.",
+            "duration": entry["duration"], "resolution": entry["resolution"],
+            "generate_audio": False,
+        }
+    else:
+        ratio = ASPECT_RATIOS.get(pipeline_state.get("aspect_ratio", "16:9"), ASPECT_RATIOS["16:9"])
+        pack = active_pack()
+        payload = {
+            "image_url": image_url, "prompt": motion,
+            "duration": entry["duration"], "cfg_scale": pack["cfg_scale"],
+            "negative_prompt": pack["kling_negative"],
+            "aspect_ratio": ratio["kling"],
+        }
+    data = fal_queue_submit(entry["url"], payload, kind="kling", poll_seconds=10, max_wait_seconds=1800)
     return data.get("video", {}).get("url") or data["data"]["video"]["url"]
 
 

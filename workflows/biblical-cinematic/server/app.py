@@ -738,7 +738,7 @@ LANDING_PAGE = """<!DOCTYPE html>
 
         <!-- Model selector -->
         <div class="mt-4 mb-4 p-4 bg-gray-800 rounded-xl border border-gray-700">
-          <label class="block text-sm font-medium text-gray-300 mb-2">Kling AI Model</label>
+          <label class="block text-sm font-medium text-gray-300 mb-2">Video Model</label>
           <div class="grid grid-cols-3 gap-3">
             <label class="relative cursor-pointer">
               <input type="radio" name="kling-model" value="v1.6" class="peer sr-only">
@@ -786,6 +786,14 @@ LANDING_PAGE = """<!DOCTYPE html>
                 <div class="text-sm font-semibold text-white">O3 Pro</div>
                 <div class="text-xs text-gray-400 mt-1">Best consistency · Premium</div>
                 <div class="text-xs text-purple-400 mt-1 font-medium">~$60/chapter</div>
+              </div>
+            </label>
+            <label class="relative cursor-pointer">
+              <input type="radio" name="kling-model" value="seedance-2.5" class="peer sr-only">
+              <div class="p-3 rounded-lg border-2 border-gray-600 peer-checked:border-emerald-500 peer-checked:bg-emerald-500/10 transition-all">
+                <div class="text-sm font-semibold text-white">Seedance 2.5</div>
+                <div class="text-xs text-gray-400 mt-1">ByteDance · top physics · 720p · 10s clips</div>
+                <div class="text-xs text-emerald-400 mt-1 font-medium">~$110/chapter · flagship</div>
               </div>
             </label>
           </div>
