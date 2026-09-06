@@ -40,6 +40,11 @@ KLING_MODELS = {
     "v3.0-pro": {"url": "https://fal.run/fal-ai/kling-video/v3/pro/image-to-video", "duration": "15"},
     "o3": {"url": "https://fal.run/fal-ai/kling-video/o3/standard/image-to-video", "duration": "15"},
     "o3-pro": {"url": "https://fal.run/fal-ai/kling-video/o3/pro/image-to-video", "duration": "15"},
+    # ByteDance Seedance 2.5 — premium lane, different API shape: no cfg_scale or
+    # negative_prompt, aspect ratio is inherited from the source image, and it
+    # token-bills (~$0.46/sec at 720p) — hence 10s clips instead of Kling's 15.
+    "seedance-2.5": {"url": "https://fal.run/bytedance/seedance-2.5/image-to-video",
+                     "duration": "10", "engine": "seedance", "resolution": "720p"},
 }
 
 # fal's FLUX uses `portrait_16_9` as its label for a 9:16 (tall) canvas — not a typo.
@@ -366,14 +371,29 @@ def generate_image(scene):
 
 
 def generate_video(image_url, scene, model="v3.0"):
-    kling = KLING_MODELS.get(model, KLING_MODELS["v3.0"])
-    ratio = ASPECT_RATIOS.get(pipeline_state.get("aspect_ratio", "16:9"), ASPECT_RATIOS["16:9"])
-    data = fal_queue_submit(kling["url"], {
-        "image_url": image_url, "prompt": scene.get("motion", "Slow cinematic camera movement"),
-        "duration": kling["duration"], "cfg_scale": active_pack()["cfg_scale"],
-        "negative_prompt": active_pack()["kling_negative"],
-        "aspect_ratio": ratio["kling"],
-    }, kind="kling", poll_seconds=10, max_wait_seconds=1800)
+    entry = KLING_MODELS.get(model, KLING_MODELS["v3.0"])
+    motion = scene.get("motion", "Slow cinematic camera movement")
+    if entry.get("engine") == "seedance":
+        # Seedance takes no negative_prompt, so the anachronism guard rides the
+        # prompt itself. Native audio is off — ElevenLabs narration is laid over
+        # the video downstream and the audio seconds would bill for nothing.
+        payload = {
+            "image_url": image_url,
+            "prompt": motion + " Stay strictly faithful to the source image; "
+                      "period-accurate biblical setting only — no modern objects, "
+                      "vehicles, or text.",
+            "duration": entry["duration"], "resolution": entry["resolution"],
+            "generate_audio": False,
+        }
+    else:
+        ratio = ASPECT_RATIOS.get(pipeline_state.get("aspect_ratio", "16:9"), ASPECT_RATIOS["16:9"])
+        payload = {
+            "image_url": image_url, "prompt": motion,
+            "duration": entry["duration"], "cfg_scale": active_pack()["cfg_scale"],
+            "negative_prompt": active_pack()["kling_negative"],
+            "aspect_ratio": ratio["kling"],
+        }
+    data = fal_queue_submit(entry["url"], payload, kind="kling", poll_seconds=10, max_wait_seconds=1800)
     return data.get("video", {}).get("url") or data["data"]["video"]["url"]
 
 
@@ -481,7 +501,7 @@ def run_pipeline(scenes, model="v3.0", resume_from=0, existing_processed=None, v
                     save_state()
                 return
             with lock:
-                pipeline_state["message"] = f"Scene {i}/{total} — Generating Kling {model} video..."
+                pipeline_state["message"] = f"Scene {i}/{total} — Generating {model} video..."
             video_url = generate_video(image_url, scene, model)
             processed.append({"narration": scene["narration"], "video_url": video_url})
             with lock:
@@ -525,7 +545,7 @@ def run_fix_scene(scene_index, scene, processed, model="v3.0", voice_id=None):
             save_state()
         image_url = generate_image(scene)
         with lock:
-            pipeline_state["message"] = f"Fixing Scene {idx}/{total} — Generating Kling {model} video..."
+            pipeline_state["message"] = f"Fixing Scene {idx}/{total} — Generating {model} video..."
         video_url = generate_video(image_url, scene, model)
         processed[scene_index] = {"narration": scene["narration"], "video_url": video_url}
         with lock:
@@ -576,7 +596,7 @@ def run_fix_scenes(fixes, processed, model="v3.0", voice_id=None):
                     save_state()
                 return
             with lock:
-                pipeline_state["message"] = f"Fix {fi+1}/{total_fixes} — Scene {idx+1} — Kling {model} video..."
+                pipeline_state["message"] = f"Fix {fi+1}/{total_fixes} — Scene {idx+1} — {model} video..."
             video_url = generate_video(image_url, scene, model)
             processed[idx] = {"narration": scene["narration"], "video_url": video_url}
             with lock:
@@ -633,7 +653,7 @@ def run_preview_scenes(fixes, processed, model="v3.0"):
                     save_state()
                 return
             with lock:
-                pipeline_state["message"] = f"Preview {fi+1}/{total_fixes} — Scene {idx+1} — Kling {model} video..."
+                pipeline_state["message"] = f"Preview {fi+1}/{total_fixes} — Scene {idx+1} — {model} video..."
             video_url = generate_video(image_url, scene, model)
             with lock:
                 pipeline_state["previews"][str(idx)] = {"image_url": image_url, "video_url": video_url}
@@ -945,7 +965,7 @@ CUSTOM_LANDING_HTML = """<!DOCTYPE html>
   <header class="px-6 py-5 flex items-center gap-4">
     <div>
       <h1 class="title-font text-xl font-semibold text-amber-400 tracking-wide">Custom Script → Cinematic Video</h1>
-      <p class="text-xs text-gray-500 mt-0.5">Claude AI · fal.ai FLUX + Kling · ElevenLabs · JSON2Video</p>
+      <p class="text-xs text-gray-500 mt-0.5">Claude AI · fal.ai FLUX + Kling/Seedance · ElevenLabs · JSON2Video</p>
     </div>
   </header>
 
@@ -982,27 +1002,34 @@ Example: A channel trailer about the 12 Tribes of Israel, their scattering, and 
       <div id="scenesContainer" class="space-y-4"></div>
       <!-- Model selector -->
       <div class="mt-4 mb-4 p-4 bg-gray-800 rounded-xl border border-gray-700">
-        <label class="block text-sm font-medium text-gray-300 mb-2">Kling AI Model</label>
-        <div class="grid grid-cols-3 gap-3">
+        <label class="block text-sm font-medium text-gray-300 mb-2">Video Model</label>
+        <div class="grid grid-cols-2 gap-3">
           <label class="relative cursor-pointer">
             <input type="radio" name="custom-kling-model" value="v3.0" class="peer sr-only" checked>
             <div class="p-2 rounded-lg border-2 border-gray-600 peer-checked:border-amber-500 peer-checked:bg-amber-500/10 transition-all">
-              <div class="text-xs font-semibold text-white">v3.0 Standard</div>
+              <div class="text-xs font-semibold text-white">Kling v3.0 Standard</div>
               <div class="text-xs text-amber-400 mt-1">~$27/video</div>
             </div>
           </label>
           <label class="relative cursor-pointer">
             <input type="radio" name="custom-kling-model" value="v3.0-pro" class="peer sr-only">
             <div class="p-2 rounded-lg border-2 border-gray-600 peer-checked:border-amber-500 peer-checked:bg-amber-500/10 transition-all">
-              <div class="text-xs font-semibold text-white">v3.0 Pro</div>
+              <div class="text-xs font-semibold text-white">Kling v3.0 Pro</div>
               <div class="text-xs text-amber-400 mt-1">~$35/video</div>
             </div>
           </label>
           <label class="relative cursor-pointer">
             <input type="radio" name="custom-kling-model" value="o3" class="peer sr-only">
             <div class="p-2 rounded-lg border-2 border-gray-600 peer-checked:border-purple-500 peer-checked:bg-purple-500/10 transition-all">
-              <div class="text-xs font-semibold text-white">O3 Standard</div>
+              <div class="text-xs font-semibold text-white">Kling O3 Standard</div>
               <div class="text-xs text-purple-400 mt-1">~$45/video</div>
+            </div>
+          </label>
+          <label class="relative cursor-pointer">
+            <input type="radio" name="custom-kling-model" value="seedance-2.5" class="peer sr-only">
+            <div class="p-2 rounded-lg border-2 border-gray-600 peer-checked:border-emerald-500 peer-checked:bg-emerald-500/10 transition-all">
+              <div class="text-xs font-semibold text-white">Seedance 2.5 · 720p</div>
+              <div class="text-xs text-emerald-400 mt-1">~$4.60/scene clip · premium</div>
             </div>
           </label>
         </div>
@@ -1496,7 +1523,7 @@ function showPreviewResults(previews) {
       previewDiv.classList.remove('hidden');
       img.src = preview.image_url;
       vid.href = preview.video_url;
-      vid.textContent = 'View Kling Video →';
+      vid.textContent = 'View Video →';
     }
     if (badge) badge.classList.remove('hidden');
   }

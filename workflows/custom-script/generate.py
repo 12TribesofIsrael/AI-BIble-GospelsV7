@@ -55,6 +55,10 @@ KLING_MODELS = {
     "v3.0-pro": {"url": "https://fal.run/fal-ai/kling-video/v3/pro/image-to-video",        "duration": "15"},
     "o3":       {"url": "https://fal.run/fal-ai/kling-video/o3/standard/image-to-video",   "duration": "15"},
     "o3-pro":   {"url": "https://fal.run/fal-ai/kling-video/o3/pro/image-to-video",        "duration": "15"},
+    # Seedance 2.5 — mirrors router.py: no cfg_scale/negative_prompt, aspect ratio
+    # comes from the source image, ~$0.46/sec at 720p so clips are 10s not 15.
+    "seedance-2.5": {"url": "https://fal.run/bytedance/seedance-2.5/image-to-video",
+                     "duration": "10", "engine": "seedance", "resolution": "720p"},
 }
 JSON2VIDEO_URL = "https://api.json2video.com/v2/movies"
 ANTHROPIC_URL = "https://api.anthropic.com/v1/messages"
@@ -244,13 +248,27 @@ def generate_video(image_url, scene, index, total, kling_model="v3.0"):
     30s, 90s, 180s. Per-attempt timeout is 1800s to accommodate o3-pro.
     """
     model_cfg = KLING_MODELS.get(kling_model, KLING_MODELS["v3.0"])
-    payload = {
-        "image_url": image_url,
-        "prompt": scene.get("motion", "Slow cinematic camera movement"),
-        "duration": model_cfg["duration"],
-        "cfg_scale": ACTIVE_PACK["cfg_scale"],
-        "negative_prompt": ACTIVE_PACK["kling_negative"],
-    }
+    motion = scene.get("motion", "Slow cinematic camera movement")
+    if model_cfg.get("engine") == "seedance":
+        # Seedance takes no cfg_scale/negative_prompt, so the anachronism guard
+        # rides the prompt; audio off — narration is laid over downstream.
+        payload = {
+            "image_url": image_url,
+            "prompt": motion + " Stay strictly faithful to the source image; "
+                      "period-accurate biblical setting only — no modern objects, "
+                      "vehicles, or text.",
+            "duration": model_cfg["duration"],
+            "resolution": model_cfg["resolution"],
+            "generate_audio": False,
+        }
+    else:
+        payload = {
+            "image_url": image_url,
+            "prompt": motion,
+            "duration": model_cfg["duration"],
+            "cfg_scale": ACTIVE_PACK["cfg_scale"],
+            "negative_prompt": ACTIVE_PACK["kling_negative"],
+        }
 
     backoff_seconds = [30, 90, 180]
     last_err = None

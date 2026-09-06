@@ -32,6 +32,9 @@ KLING_MODELS = {
     "v3.0-pro": {"url": "https://fal.run/fal-ai/kling-video/v3/pro/image-to-video",        "duration": "15"},
     "o3":       {"url": "https://fal.run/fal-ai/kling-video/o3/standard/image-to-video",   "duration": "15"},
     "o3-pro":   {"url": "https://fal.run/fal-ai/kling-video/o3/pro/image-to-video",        "duration": "15"},
+    # Seedance 2.5 — mirrors router.py: no cfg_scale/negative_prompt, aspect ratio
+    # comes from the source image, ~$0.46/sec at 720p so clips are 10s not 15.
+    "seedance-2.5": {"url": "https://fal.run/bytedance/seedance-2.5/image-to-video",       "duration": "10"},
 }
 
 ASPECT_RATIOS = {
@@ -135,13 +138,26 @@ def generate_image(scene, flux_size):
 
 
 def generate_video(image_url, scene, kling_url, kling_aspect, kling_duration):
-    print(f"  Kling: {scene.get('motion', 'slow cinematic')[:60]}")
-    data = fal_queue_submit(kling_url, {
-        "image_url": image_url,
-        "prompt": scene.get("motion", "Slow cinematic camera movement"),
-        "duration": kling_duration, "cfg_scale": 0.5,
-        "aspect_ratio": kling_aspect,
-    }, kind="kling", poll_seconds=10, max_wait_seconds=1800)
+    motion = scene.get("motion", "Slow cinematic camera movement")
+    print(f"  Video: {motion[:60]}")
+    if "seedance" in kling_url:
+        # Seedance takes no cfg_scale/negative_prompt and inherits aspect ratio
+        # from the source image; audio off — narration is added downstream.
+        payload = {
+            "image_url": image_url,
+            "prompt": motion + " Stay strictly faithful to the source image; "
+                      "period-accurate biblical setting only — no modern objects, "
+                      "vehicles, or text.",
+            "duration": kling_duration, "resolution": "720p",
+            "generate_audio": False,
+        }
+    else:
+        payload = {
+            "image_url": image_url, "prompt": motion,
+            "duration": kling_duration, "cfg_scale": 0.5,
+            "aspect_ratio": kling_aspect,
+        }
+    data = fal_queue_submit(kling_url, payload, kind="kling", poll_seconds=10, max_wait_seconds=1800)
     return data.get("video", {}).get("url") or data["data"]["video"]["url"]
 
 
